@@ -33,6 +33,9 @@
 | D65 宿主先行 (2026-10-16) | 插件侧 P11.3 之前先在宿主完成: 预览服务的 `res/` 支持 (契约 v3 的资源目录一项提前) 与动态布局器的 Android XML 属性集扩充 (SDK `attrs.xml` 元数据 + 反射 setter 兜底 + 映射表 + 不支持清单与诊断), 宿主另写专门路线图; 插件原生属性目录由宿主元数据表生成 (修订 D56) |
 | D68 TSX 的事件桩 (2026-10-16, P11.7 前) | 实测 (AVD_API_33, TypeScript Engine 0.7.0, 宿主 debug): 3.5 节原定的 `ui.<id>.on('event', (event, view) => ...)` 在 TSX 中编译失败 (`strict` 下 TS2339 `ui` 上没有该 id, TS7006 参数隐式 any), `(ui as any).<id>.on(...)` 与 `ui.findView('<id>')?.click(...)` 可编译运行. 维护者选择: click 写成 JSX 内联 `onClick={() => { ... }}` (与 TypeScript Engine 模板一致, 宿主的 TSX 运行时只特殊支持 onClick), 其它事件追加 `(ui as any).<id>.on('<event>', (_event: any, _view: any) => { ... })` (参数带类型与下划线, 满足 `noImplicitAny` / `noUnusedParameters`) |
 | D69 TSX 的交互预览 (2026-10-16, P11.7 前) | 宿主的预览运行只按 JavaScript 执行脚本文本. 维护者选择由宿主支持: 预览契约再追加 v5 (`runScript` 可交 `.tsx`, 宿主先经 TypeScript Engine 编译再在会话中运行, 编译错误按行回报), 作为宿主阶段 P11.H3; 插件在 v5 宿主上为 TSX UI 工程打开交互预览, 旧宿主上开关处说明需在 AutoJs6 中运行. 1.9.0 的发布顺延到 P11.H3 之后 |
+| D70 compose 联动的编辑范围 (2026-10-22, Q24 选 (b)) | 除编辑 `compose.attach` 的渲染函数节点树 (3.6 节) 外, 还允许在 XML 工程里新建 `<compose>` 容器并生成 `compose.attach(ui.<id>, ...)` 桩 (JS 与 TSX 各一种写法, TSX 按 D68 的类型要求), 作为可撤销的编辑, 保存时才写回 (与 D66 的桩一致); 不做 XML 元素转 Compose 节点 |
+| D71 宿主编辑器面板 (2026-10-22, Q25 选 (a)) | 宿主编辑器的预览面板为分栏 (竖屏下半区 / 横屏右半区), "预览" 开关状态按文件记住; 由 P11.10 宿主子会话实施 |
+| D72 复核线重定基线 (2026-10-22, Q22 选 (a)) | 复核线超线且维护者接受后, 以当次 release 的 Redmi 采样为新基线 (与 1.5.0 做法一致); P11.9 执行 |
 
 ---
 
@@ -257,7 +260,8 @@
 ### P11.8 compose 联动 (插件, 1.9.0)
 
 - [ ] (插件) `compose.attach` 解析与 `composeAttachments`, 子会话与复合撤销命令, 叠画与点选优先级, Compose 抽屉 / 大纲子树的切换, `ScriptWriter` 写回实参范围 (3.6 节).
-- [ ] (测试) JVM `ComposeAttachmentTest` (解析, 关联, 写回不动点, 不可解析实参的提示); 设备 `UiComposeLinkDeviceTest` (含 `<compose>` 与 `compose.attach` 的脚本: 画布在容器边界内画出 Compose 节点, 点选后抽屉显示 Compose 属性, 改 Text 文本后保存只改渲染函数; 交互预览中宿主真实画出 Compose 内容 (API 33+ 与 v2 宿主)).
+- [ ] (插件, D70) 新建 `<compose>` 容器的入口 (元素面板 / 片段菜单, 与 D66 入口风格一致) 与 `compose.attach(ui.<id>, ...)` 桩 (JS / TSX 各一种, TSX 按 D68), 可撤销, 保存时写回.
+- [ ] (测试) JVM `ComposeAttachmentTest` (解析, 关联, 写回不动点, 不可解析实参的提示, D70 桩生成); 设备 `UiComposeLinkDeviceTest` (含 `<compose>` 与 `compose.attach` 的脚本: 画布在容器边界内画出 Compose 节点, 点选后抽屉显示 Compose 属性, 改 Text 文本后保存只改渲染函数; 交互预览中宿主真实画出 Compose 内容 (API 33+ 与 v2 宿主)).
 
 ### P11.9 1.9.0 文档与发布 (文档 + 发布)
 
@@ -333,6 +337,8 @@ py .python/verify_designer_performance.py --serial <Redmi serial> --apk <debug a
 
 超线由维护者确认是否接受; 接受后以何次采样为新基线? 选项: (a) 以当次 release 的 Redmi 采样为新基线 (与 P5 的 1.5.0 做法一致, 建议); (b) 连续两版超线才重定; (c) 每版都重采并以最近三版的最大 p90 定线.
 
+已拍板 (2026-10-22): (a), 见 D72.
+
 ### Q23 (P11.3 前): 文件夹工程的导出格式
 
 (a) zip (建议: 单文件交付, 宿主 "导入" 入口也能收); (b) SAF 目录逐文件写入; (c) 两者都做.
@@ -343,6 +349,10 @@ py .python/verify_designer_performance.py --serial <Redmi serial> --apk <debug a
 
 (a) 只编辑 `compose.attach` 的渲染函数节点树 (建议); (b) 也允许在 XML 工程里新建 `<compose>` 容器并生成 `compose.attach` 桩 (类似 D52 的事件桩); (c) 允许把 XML 元素转换成 Compose 节点 (不建议, 语义不对等).
 
+已拍板 (2026-10-22): (b), 见 D70.
+
 ### Q25 (P11.10 前): 编辑器面板的位置与持久化
 
 (a) 下半区 / 右半区分栏, 开关状态按文件记住 (建议); (b) 底部弹层, 不记住; (c) 独立页面 (全屏预览), 从编辑器跳转.
+
+已拍板 (2026-10-22): (a), 见 D71.
