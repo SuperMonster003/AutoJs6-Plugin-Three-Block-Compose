@@ -1,5 +1,7 @@
 package io.github.supermonster003.autojs6.plugin.three.block.compose.designer.parse
 
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.AttachmentProblem
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.ComposeAttachment
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.FragmentUsage
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.LayoutFileSource
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.UiDocument
@@ -76,6 +78,7 @@ class UiScriptReader {
             val assigned = HashSet<String>()
             val layoutCalls = ArrayList<FunctionCall>()
             val fileCalls = ArrayList<FileCall>()
+            val attachCalls = ArrayList<FunctionCall>()
             var androidLayoutCall: FunctionCall? = null
             val widgets = LinkedHashSet<String>()
             val handlers = LinkedHashSet<UiHandler>()
@@ -84,6 +87,7 @@ class UiScriptReader {
                     is XmlLiteral -> literals += literalOf(node)
                     is Assignment -> (node.left as? Name)?.let { assigned += it.identifier }
                     is FunctionCall -> when {
+                        isComposeAttach(node) -> attachCalls += node
                         isUiCall(node, "layout") -> layoutCalls += node
                         isUiCall(node, "layoutFile") -> fileCalls += FileCall((node.arguments.firstOrNull() as? StringLiteral)?.value, FragmentUsage.LAYOUT, node)
                         isUiCall(node, "inflate") -> filesReadPath(node.arguments.firstOrNull())?.let { fileCalls += FileCall(it, FragmentUsage.OTHER, node) }
@@ -99,6 +103,8 @@ class UiScriptReader {
             literals.sortBy { it.start }
             literals.forEach { literal -> literal.boundTo?.let { initializers.getOrPut(it) { ArrayList() } += literal } }
             fileCalls.sortBy { it.call.absolutePosition }
+            val problems = ArrayList<AttachmentProblem>()
+            val attachments = attachmentsOf(root, attachCalls, literals, problems)
 
             layoutCalls.sortBy { it.absolutePosition }
             var rootLiteral: Literal? = null
@@ -123,7 +129,9 @@ class UiScriptReader {
                     // Roadmap P10.4 / D52: handler stubs go after this statement and the handlers already behind it.
                     statementOf(call)?.let { statement ->
                         val end = handlersEndAfter(statement)
-                        if (end >= literal.end && literals.none { it !== literal && it.start >= literal.end && it.start < end }) {
+                        val cut = literals.any { it !== literal && it.start >= literal.end && it.start < end } ||
+                            attachments.any { it.start >= literal.end && it.start < end }
+                        if (end >= literal.end && !cut) {
                             literal.stubOffset = end - literal.end
                             literal.stubIndent = indentOf(statement.absolutePosition)
                         }
@@ -136,7 +144,22 @@ class UiScriptReader {
             val segmentStarts = ArrayList<Int>()
             var cursor = 0
             var rootIndex = -1
+            // The attached interfaces between the literals are segments of their own (roadmap P11.8).
+            var nextAttachment = 0
+            fun attachmentsBefore(offset: Int) {
+                while (nextAttachment < attachments.size && attachments[nextAttachment].start < offset) {
+                    val attachment = attachments[nextAttachment++]
+                    if (attachment.start > cursor) {
+                        segmentStarts += cursor
+                        segments += UiSegment.Opaque(source.substring(cursor, attachment.start))
+                    }
+                    segmentStarts += attachment.start
+                    segments += UiSegment.Compose(attachment.attachment)
+                    cursor = attachment.end
+                }
+            }
             literals.forEachIndexed { index, literal ->
+                attachmentsBefore(literal.start)
                 if (literal.start < cursor) fail(literal.start, "Nested XML literals are not supported")
                 if (literal.start > cursor) {
                     segmentStarts += cursor
@@ -152,6 +175,7 @@ class UiScriptReader {
                 if (literal === rootLiteral) rootIndex = index
                 cursor = literal.end
             }
+            attachmentsBefore(Int.MAX_VALUE)
             if (cursor < source.length) {
                 segmentStarts += cursor
                 segments += UiSegment.Opaque(source.substring(cursor))
@@ -210,7 +234,71 @@ class UiScriptReader {
                     else -> fail(0, "The script has no ui.layout(...) or ui.layoutFile(...) call")
                 }
             }
-            return UiDocument(segments, rootIndex, nextId, widgets, handlers, files, missing, androidLayoutOf(androidLayoutCall))
+            return UiDocument(
+                segments, rootIndex, nextId, widgets, handlers, files, missing, androidLayoutOf(androidLayoutCall),
+                attachmentProblems = problems,
+            )
+        }
+
+        /** An attached interface: the source range of the argument and what it reads as. */
+        private class Attached(val start: Int, val end: Int, val attachment: ComposeAttachment)
+
+        /**
+         * The interfaces of the `compose.attach(ui.<id>, <interface>)` calls (roadmap P11.8 / 3.6), in script order and
+         * without overlaps; a call whose container or interface cannot be read stays opaque and goes to [problems].
+         * Calls inside an XML literal (in an `{expr}`) or inside another attached interface are left to their holder.
+         */
+        private fun attachmentsOf(root: AstRoot, calls: List<FunctionCall>, literals: List<Literal>, problems: MutableList<AttachmentProblem>): List<Attached> {
+            val attached = ArrayList<Attached>()
+            val reader = ScriptReader()
+            for (call in calls.sortedBy { it.absolutePosition }) {
+                val position = call.absolutePosition
+                if (literals.any { position >= it.start && position < it.end } || attached.any { position >= it.start && position < it.end }) continue
+                fun problem(id: String?, reason: String) {
+                    problems += AttachmentProblem(id, lineOf(position), columnOf(position), reason)
+                }
+                val id = containerIdOf(call.arguments.firstOrNull())
+                if (id == null) {
+                    problem(null, "compose.attach needs ui.<id> of a <compose> element as its container")
+                    continue
+                }
+                val spec = call.arguments.getOrNull(1)
+                if (spec == null) {
+                    problem(id, "compose.attach needs the interface to show")
+                    continue
+                }
+                val start = spec.absolutePosition
+                val end = start + spec.length
+                if (literals.any { it.start < end && it.end > start }) {
+                    problem(id, "The interface attached to ui.$id holds an XML literal")
+                    continue
+                }
+                if (attached.any { it.attachment.containerId == id }) {
+                    problem(id, "ui.$id already has an interface attached earlier in the script")
+                    continue
+                }
+                val document = try {
+                    reader.readAttachment(source, root, spec)
+                } catch (error: DesignerParseError) {
+                    problems += AttachmentProblem(id, error.line, error.column, error.reason)
+                    continue
+                }
+                attached += Attached(start, end, ComposeAttachment(id, source.substring(start, end), document, line = lineOf(position), column = columnOf(position)))
+            }
+            return attached
+        }
+
+        /** `<id>` of a `ui.<id>` (or `$ui.<id>`) container argument, or null. */
+        private fun containerIdOf(argument: AstNode?): String? {
+            val get = argument as? PropertyGet ?: return null
+            val receiver = (get.target as? Name)?.identifier
+            return if (receiver == "ui" || receiver == "\$ui") get.property.identifier else null
+        }
+
+        private fun isComposeAttach(call: FunctionCall): Boolean {
+            val target = call.target as? PropertyGet ?: return false
+            val receiver = (target.target as? Name)?.identifier
+            return (receiver == "compose" || receiver == "\$compose") && target.property.identifier == "attach"
         }
 
         /** `ui.useAndroidLayout()` and `(true)` keep native XML, `(false)` converts it, `(null)` or anything else is automatic. */

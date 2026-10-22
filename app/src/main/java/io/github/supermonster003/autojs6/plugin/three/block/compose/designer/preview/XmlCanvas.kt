@@ -20,8 +20,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -29,12 +33,16 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -43,9 +51,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.supermonster003.autojs6.plugin.three.block.compose.app.LeftToRight
 import io.github.supermonster003.autojs6.plugin.three.block.compose.app.ScriptText
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.codegen.ComposeAttachStubs
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.DesignDocument
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.DesignNode
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.JsLiteral
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.PropValue
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.idName
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.XmlNode
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.ui.UiDesignerSession
+import org.autojs.plugin.compose.api.model.ThemeSpec
 
 /**
  * The canvas of a `"ui"` mode project (roadmap P10.3 / D46 / D48): the host's real inflater draws the layout,
@@ -60,6 +74,11 @@ import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.ui.
  * pointer input reaches the embedded tree (P10.0), so nothing of this window shows over the canvas then: the
  * overlay and its gestures are gone and the status goes to the editor's row above the canvas. Changing the Z
  * order needs a new surface, so the `SurfaceView` is recreated and the session re-attached.
+ *
+ * The interface `compose.attach` puts into a `<compose>` element (roadmap P11.8) is not run by the layout preview:
+ * the host lays out the empty container, and in edit mode [AttachedInterface] draws the interface the designer
+ * reads from the script into the container's bounds with the real renderer. A tap selects its deepest node first
+ * ([onSelectAttached]), then the XML element under it.
  */
 @Composable
 internal fun XmlCanvas(
@@ -73,11 +92,16 @@ internal fun XmlCanvas(
     text: Color,
     muted: Color,
     surface: Color,
+    /** Where attached interfaces find their images, and the theme they are drawn in. */
+    images: ImageSource?,
+    theme: ThemeSpec,
     /** The preview's status for the user, or null when a frame is shown without remarks. */
     statusText: String?,
     retryLabel: String,
     onRetry: (() -> Unit)?,
     onSelect: (Int?) -> Unit,
+    /** A tap on node `nodeId` of the interface attached to `ui.<containerId>`. */
+    onSelectAttached: (containerId: String, nodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -108,6 +132,28 @@ internal fun XmlCanvas(
         return request?.elementIdAt(best.index)
     }
 
+    // Roadmap P11.8: each `<compose>` element on the canvas with an attached interface and a visible view.
+    val attachedBounds = remember { HashMap<String, CanvasBounds>() }
+    var contentOrigin by remember { mutableStateOf(Offset.Zero) }
+    val attached = if (interactive || !hasFrame) emptyList() else session.root?.descendants().orEmpty().mapNotNull { element ->
+        val id = element.idName()?.takeIf { element.tag == ComposeAttachStubs.TAG } ?: return@mapNotNull null
+        val attachment = session.document.attachment(id) ?: return@mapNotNull null
+        val index = request?.indexOf(element.id)?.takeIf { it >= 0 } ?: return@mapNotNull null
+        val bound = bounds.filter { it.index == index && it.visibility == 0 }.minByOrNull { it.instance } ?: return@mapNotNull null
+        Attached(id, attachment.document, element, rectOf(bound))
+    }.toList()
+    SideEffect { attachedBounds.values.forEach { it.origin = contentOrigin } }
+
+    /** The node under [point] of the topmost attached interface there, with its container id. */
+    fun hitAttached(point: Offset): Pair<String, Int>? {
+        for (item in attached.asReversed()) {
+            if (!item.rect.contains(point)) continue
+            val node = attachedBounds[item.containerId]?.hit(item.document, point, emptyMap()) ?: continue
+            return item.containerId to node
+        }
+        return null
+    }
+
     BoxWithConstraints(modifier = modifier.testTag("designer-xml-canvas")) {
         val logicalWidth = if (constraints.hasBoundedWidth) maxWidth else 360.dp
         val logicalHeight = if (constraints.hasBoundedHeight) maxHeight else 640.dp
@@ -115,7 +161,12 @@ internal fun XmlCanvas(
         val heightPx = with(density) { logicalHeight.roundToPx() }
         if (!client.embedded) LaunchedEffect(widthPx, heightPx) { client.resize(widthPx, heightPx) }
         Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState())) {
-            Box(Modifier.requiredSize(logicalWidth * zoom, logicalHeight * zoom).testTag("designer-xml-canvas-content")) {
+            Box(
+                Modifier
+                    .requiredSize(logicalWidth * zoom, logicalHeight * zoom)
+                    .onGloballyPositioned { contentOrigin = it.positionInRoot() }
+                    .testTag("designer-xml-canvas-content"),
+            ) {
                 if (client.embedded) key(interactive) {
                     AndroidView(
                         factory = { context ->
@@ -141,6 +192,14 @@ internal fun XmlCanvas(
                         Image(bitmap, contentDescription = null, contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize().testTag("designer-xml-snapshot"))
                     }
                 }
+                for (item in attached) key(item.containerId) {
+                    val itemBounds = attachedBounds.getOrPut(item.containerId) { CanvasBounds().also { it.origin = contentOrigin } }
+                    val values = session.attachmentSession?.takeIf { session.attachmentId == item.containerId }?.previewValues ?: emptyMap()
+                    AttachedInterface(
+                        item.containerId, item.document, images, theme, zoom, item.rect,
+                        XmlPreviewFrames.takesMeasuredHeight(item.element), itemBounds, values,
+                    ) { height -> session.setComposeHeight(item.containerId, height) }
+                }
                 if (!hasFrame) {
                     val root = session.root
                     LeftToRight {
@@ -160,8 +219,11 @@ internal fun XmlCanvas(
                     Modifier
                         .fillMaxSize()
                         .testTag("designer-xml-overlay")
-                        .pointerInput(request, bounds, zoom) {
-                            detectTapGestures { offset -> onSelect(hit(offset)) }
+                        .pointerInput(request, bounds, zoom, attached) {
+                            detectTapGestures { offset ->
+                                val node = hitAttached(offset)
+                                if (node != null) onSelectAttached(node.first, node.second) else onSelect(hit(offset))
+                            }
                         }
                         .pointerInput(request, bounds, zoom) {
                             var dragging: Int? = null
@@ -193,19 +255,20 @@ internal fun XmlCanvas(
                         session.dropTargetId?.let { id -> boundsOf(id)?.let { drawRect(accent.copy(alpha = 0.18f), it.topLeft, it.size); drawRect(accent, it.topLeft, it.size, style = stroke) } }
                         session.dropLine?.let { (start, end) -> drawLine(accent, start, end, strokeWidth = 3.dp.toPx()) }
                         session.problemElementId?.takeIf { it != session.selectedId }?.let { id -> boundsOf(id)?.let { drawRect(danger, it.topLeft, it.size, style = stroke) } }
+                        // A node of an attached interface is selected in the Compose drawer: it takes the selection frame.
+                        val attachedSelection = session.attachmentSession?.let { compose ->
+                            val containerId = session.attachmentId?.takeIf { id -> attached.any { it.containerId == id } } ?: return@let null
+                            val node = compose.selected ?: return@let null
+                            attachedBounds[containerId]?.local(node.id)?.let { it to node }
+                        }
+                        if (attachedSelection != null) {
+                            drawSelection(attachedSelection.first, accent, attachedLabel(attachedSelection.second), measurer, labelStyle)
+                            return@Canvas
+                        }
                         session.selectedId?.let { id ->
                             val rect = boundsOf(id) ?: return@let
-                            val color = if (session.problemElementId == id) danger else accent
-                            val inflated = Rect(rect.topLeft - Offset(2f, 2f), Size(rect.width + 4f, rect.height + 4f))
-                            drawRect(color, inflated.topLeft, inflated.size, style = stroke)
                             val element = session.document.element(id) ?: return@let
-                            val label = measurer.measure(elementLabel(element), labelStyle)
-                            val padding = 3.dp.toPx()
-                            val labelSize = Size(label.size.width + padding * 2, label.size.height + padding)
-                            val top = if (inflated.top >= labelSize.height) inflated.top - labelSize.height else inflated.top
-                            val left = inflated.left.coerceAtLeast(0f)
-                            drawRect(color, Offset(left, top), labelSize)
-                            drawText(label, topLeft = Offset(left + padding, top + padding / 2))
+                            drawSelection(rect, if (session.problemElementId == id) danger else accent, elementLabel(element), measurer, labelStyle)
                         }
                     }
                 }
@@ -225,6 +288,28 @@ internal fun XmlCanvas(
             }
         }
     }
+}
+
+/** A `<compose>` element on the canvas, the interface attached to it and its bounds (canvas pixels). */
+private data class Attached(val containerId: String, val document: DesignDocument, val element: XmlNode.Element, val rect: Rect)
+
+/** The selection frame around [rect] with its name label above it, or inside when there is no room above. */
+private fun DrawScope.drawSelection(rect: Rect, color: Color, label: String, measurer: TextMeasurer, style: TextStyle) {
+    val inflated = Rect(rect.topLeft - Offset(2f, 2f), Size(rect.width + 4f, rect.height + 4f))
+    drawRect(color, inflated.topLeft, inflated.size, style = Stroke(width = 2.dp.toPx()))
+    val measured = measurer.measure(label, style)
+    val padding = 3.dp.toPx()
+    val labelSize = Size(measured.size.width + padding * 2, measured.size.height + padding)
+    val top = if (inflated.top >= labelSize.height) inflated.top - labelSize.height else inflated.top
+    val left = inflated.left.coerceAtLeast(0f)
+    drawRect(color, Offset(left, top), labelSize)
+    drawText(measured, topLeft = Offset(left + padding, top + padding / 2))
+}
+
+/** `Type #key` for a node of an attached interface, as the compose canvas labels it. */
+private fun attachedLabel(node: DesignNode): String {
+    val key = ((node.key as? PropValue.Literal)?.value as? JsLiteral.Str)?.value
+    return if (key == null) node.type else node.type + " #" + key
 }
 
 /** `tag #id` for the selection label and the outline. */

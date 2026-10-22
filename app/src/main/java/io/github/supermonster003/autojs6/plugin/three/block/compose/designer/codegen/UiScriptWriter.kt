@@ -1,5 +1,6 @@
 package io.github.supermonster003.autojs6.plugin.three.block.compose.designer.codegen
 
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.ComposeAttachment
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.Dialect
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.UiDocument
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.UiSegment
@@ -18,7 +19,18 @@ object UiScriptWriter {
         for (segment in document.segments) when (segment) {
             is UiSegment.Opaque -> append(segment.source)
             is UiSegment.Layout -> append(write(segment.fragment.root))
+            is UiSegment.Compose -> append(attachment(segment.attachment, TsxUiWriter.indentBefore(this)))
         }
+    }
+
+    /**
+     * An attached interface (roadmap P11.8 / D35): the argument as the script wrote it while its mount is unedited,
+     * else the interface in the compose writer's form of its dialect, continuation lines indented from [indent].
+     */
+    fun attachment(attachment: ComposeAttachment, indent: String): String {
+        val mount = attachment.document.mount
+        if (mount == null || mount == attachment.read.mount) return attachment.source
+        return if (attachment.document.dialect == Dialect.TSX) TsxWriter.render(mount, indent) else ScriptWriter.render(mount, indent)
     }
 
     /** The text of every layout file the document refers to (roadmap P11.3), by the path the script writes. */

@@ -47,7 +47,7 @@ class TsxUiRoundTripTest {
 
     @Test
     fun `every TSX ui source is covered and has a canonical form`() {
-        assertEquals(listOf("ui/cases.tsx", "ui/engine-template.tsx", "ui/variable.tsx"), snapshots.sources("ui"))
+        assertEquals(listOf("ui/cases.tsx", "ui/compose.tsx", "ui/engine-template.tsx", "ui/variable.tsx"), snapshots.sources("ui"))
         assertEquals(ProjectStore.TSX_UI_TEMPLATE, snapshots.source(TsxSnapshotRecorder.UI_TEMPLATE))
         sources.forEach { name -> assertTrue("$name has no canonical form", Files.isRegularFile(snapshots.root.resolve("ui-canonical/$name"))) }
     }

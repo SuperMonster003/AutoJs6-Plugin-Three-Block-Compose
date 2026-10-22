@@ -173,6 +173,7 @@
     <string name="designer_ui_bindings_hint">Valores que la vista previa da a los nombres {{ }} de este diseño, evaluados a partir de las declaraciones de nivel superior del script. Las sustituciones solo cambian el lienzo; el script conserva sus valores.</string>
     <string name="designer_ui_category_button">Botones</string>
     <string name="designer_ui_category_choice">Selección</string>
+    <string name="designer_ui_category_compose">Compose</string>
     <string name="designer_ui_category_image">Imágenes</string>
     <string name="designer_ui_category_input">Entrada</string>
     <string name="designer_ui_category_layout">Diseños</string>
@@ -181,6 +182,11 @@
     <string name="designer_ui_category_other">Otros</string>
     <string name="designer_ui_category_progress">Progreso</string>
     <string name="designer_ui_category_text">Texto</string>
+    <string name="designer_ui_compose_added">Se añadió compose #%1$s y compose.attach(ui.%1$s, ...) después del diseño; tócalo en el lienzo para editar su interfaz.</string>
+    <string name="designer_ui_compose_back">Volver al diseño</string>
+    <string name="designer_ui_compose_edit">Editar la interfaz Compose</string>
+    <string name="designer_ui_compose_editing">Interfaz Compose en ui.%1$s</string>
+    <string name="designer_ui_compose_failed">Una interfaz Compose necesita un diseño mostrado por una sentencia ui.layout, no Android XML nativo.</string>
     <string name="designer_ui_console_empty">AutoJs6 no informó de nada al dibujar este diseño.</string>
     <string name="designer_ui_console_hint">La vista previa del diseño no ejecuta el script. Esta pestaña muestra lo que AutoJs6 informó al dibujar el diseño.</string>
     <string name="designer_ui_console_run_empty">El script aún no ha escrito nada.</string>

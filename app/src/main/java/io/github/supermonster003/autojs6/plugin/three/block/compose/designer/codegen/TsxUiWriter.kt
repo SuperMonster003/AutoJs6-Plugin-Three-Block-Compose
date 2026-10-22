@@ -24,6 +24,7 @@ object TsxUiWriter {
         for (segment in document.segments) when (segment) {
             is UiSegment.Opaque -> append(segment.source)
             is UiSegment.Layout -> append(fragment(segment.fragment, indentBefore(this)))
+            is UiSegment.Compose -> append(UiScriptWriter.attachment(segment.attachment, indentBefore(this)))
         }
     }
 
@@ -83,7 +84,7 @@ object TsxUiWriter {
     }
 
     /** The indentation of the line [text] currently ends on, as far as it is only spaces and tabs. */
-    private fun indentBefore(text: CharSequence): String {
+    internal fun indentBefore(text: CharSequence): String {
         val lineStart = text.lastIndexOf('\n') + 1
         val line = text.substring(lineStart)
         return line.takeWhile { it == ' ' || it == '\t' }

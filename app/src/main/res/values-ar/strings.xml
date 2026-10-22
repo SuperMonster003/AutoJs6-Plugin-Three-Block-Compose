@@ -173,6 +173,7 @@
     <string name="designer_ui_bindings_hint">القيم التي تعطيها المعاينة لأسماء {{ }} في هذا التخطيط, محسوبة من تصريحات المستوى الأعلى في البرنامج النصي. التجاوزات تغير اللوحة فقط; ويحتفظ البرنامج النصي بقيمه.</string>
     <string name="designer_ui_category_button">الأزرار</string>
     <string name="designer_ui_category_choice">الاختيار</string>
+    <string name="designer_ui_category_compose">Compose</string>
     <string name="designer_ui_category_image">الصور</string>
     <string name="designer_ui_category_input">الإدخال</string>
     <string name="designer_ui_category_layout">التخطيطات</string>
@@ -181,6 +182,11 @@
     <string name="designer_ui_category_other">أخرى</string>
     <string name="designer_ui_category_progress">التقدم</string>
     <string name="designer_ui_category_text">النص</string>
+    <string name="designer_ui_compose_added">تمت إضافة compose #%1$s و compose.attach(ui.%1$s, ...) بعد التخطيط; انقر عليه في اللوحة لتحرير واجهته.</string>
+    <string name="designer_ui_compose_back">العودة إلى التخطيط</string>
+    <string name="designer_ui_compose_edit">تحرير واجهة Compose</string>
+    <string name="designer_ui_compose_editing">واجهة Compose في ui.%1$s</string>
+    <string name="designer_ui_compose_failed">تحتاج واجهة Compose إلى تخطيط تعرضه عبارة ui.layout, وليس Android XML أصليا.</string>
     <string name="designer_ui_console_empty">لم يبلغ AutoJs6 عن أي شيء أثناء رسم هذا التخطيط.</string>
     <string name="designer_ui_console_hint">معاينة التخطيط لا تشغل البرنامج النصي. يعرض هذا التبويب ما أبلغ عنه AutoJs6 أثناء رسم التخطيط.</string>
     <string name="designer_ui_console_run_empty">لم يكتب السكربت أي شيء بعد.</string>

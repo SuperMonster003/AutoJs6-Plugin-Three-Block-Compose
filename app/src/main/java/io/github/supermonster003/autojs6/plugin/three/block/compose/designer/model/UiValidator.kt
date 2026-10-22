@@ -29,7 +29,20 @@ class UiValidator(private val catalog: UiCatalog = UiCatalog.load(), private val
             if (tsx) fragment.root.descendants().forEach { validateTsx(it, diagnostics) }
         }
         ids.forEach { (id, owners) -> if (owners.size > 1) owners.forEach { diagnostics += Diagnostic(it, "id", Severity.ERROR, "Duplicate id \"$id\"") } }
+        validateAttachments(document, diagnostics)
         return diagnostics
+    }
+
+    /** Roadmap P11.8: an attached interface needs a `<compose>` element with its id; one the designer cannot read is listed. */
+    private fun validateAttachments(document: UiDocument, out: MutableList<Diagnostic>) {
+        val containers = document.elements().filter { it.tag == COMPOSE_TAG }.mapNotNull { element -> element.idName()?.let { it to element.id } }.toMap()
+        for (attachment in document.composeAttachments) {
+            if (attachment.containerId in containers) continue
+            out += Diagnostic(null, null, Severity.WARNING, "Line ${attachment.line}: no <compose id=\"${attachment.containerId}\"> element holds the interface compose.attach puts into ui.${attachment.containerId}")
+        }
+        for (problem in document.attachmentProblems) {
+            out += Diagnostic(problem.containerId?.let { containers[it] }, null, Severity.WARNING, "Line ${problem.line}, column ${problem.column}: ${problem.reason}; the designer keeps this compose.attach interface as written")
+        }
     }
 
     private fun validate(element: XmlNode.Element, parent: XmlNode.Element?, out: MutableList<Diagnostic>, ids: MutableMap<String, MutableList<Int>>, widgets: Set<String>, tsx: Boolean = false) {
@@ -199,6 +212,8 @@ class UiValidator(private val catalog: UiCatalog = UiCatalog.load(), private val
 
     private companion object {
         const val RELATIVE_GROUP = "RelativeLayout 子视图规则"
+        /** The container tag `compose.attach` mounts a compose interface into (roadmap P11.8). */
+        const val COMPOSE_TAG = "compose"
         /** An event attribute of a TSX element (`onClick`, `onLongClick`, ...). */
         val TSX_EVENT = Regex("""on[A-Z][A-Za-z0-9]*""")
         /** The tags whose text children the host's TSX runtime joins into `text`. */

@@ -173,6 +173,7 @@
     <string name="designer_ui_bindings_hint">Values the preview gives the {{ }} names of this layout, evaluated from the script\'s top-level declarations. Overrides change only the canvas; the script keeps its values.</string>
     <string name="designer_ui_category_button">Buttons</string>
     <string name="designer_ui_category_choice">Choice</string>
+    <string name="designer_ui_category_compose">Compose</string>
     <string name="designer_ui_category_image">Images</string>
     <string name="designer_ui_category_input">Input</string>
     <string name="designer_ui_category_layout">Layouts</string>
@@ -181,6 +182,11 @@
     <string name="designer_ui_category_other">Other</string>
     <string name="designer_ui_category_progress">Progress</string>
     <string name="designer_ui_category_text">Text</string>
+    <string name="designer_ui_compose_added">Added compose #%1$s and compose.attach(ui.%1$s, ...) after the layout; tap it on the canvas to edit its interface.</string>
+    <string name="designer_ui_compose_back">Back to the layout</string>
+    <string name="designer_ui_compose_edit">Edit the Compose interface</string>
+    <string name="designer_ui_compose_editing">Compose interface in ui.%1$s</string>
+    <string name="designer_ui_compose_failed">A Compose interface needs a layout laid out by a ui.layout statement, not native Android XML.</string>
     <string name="designer_ui_console_empty">AutoJs6 reported nothing while drawing this layout.</string>
     <string name="designer_ui_console_hint">The layout preview does not run the script. This tab shows what AutoJs6 reported while drawing the layout.</string>
     <string name="designer_ui_console_run_empty">The script has written nothing yet.</string>

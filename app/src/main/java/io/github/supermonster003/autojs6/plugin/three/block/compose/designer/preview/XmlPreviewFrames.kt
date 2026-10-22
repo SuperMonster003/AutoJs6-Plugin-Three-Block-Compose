@@ -7,6 +7,7 @@ import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.mod
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.XmlAttr
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.XmlEntities
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.XmlNode
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.idName
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.parse.JsonText
 
 /** What the preview request could not carry faithfully, by element and attribute (null for content). */
@@ -22,6 +23,12 @@ internal data class XmlPreviewValues(
     val declarations: Map<String, String> = emptyMap(),
     val overrides: Map<String, String> = emptyMap(),
     val expressions: Map<String, String> = emptyMap(),
+    /**
+     * The height (dp) the canvas measured for the interface `compose.attach` puts into each `<compose>` element, by its
+     * id (roadmap P11.8): the host lays the element out empty, so one without a height of its own gets it as
+     * `minHeight` and what follows it moves down as it would in the running script.
+     */
+    val composeHeights: Map<String, Int> = emptyMap(),
 ) {
     companion object {
         val EMPTY = XmlPreviewValues()
@@ -100,7 +107,8 @@ internal object XmlPreviewFrames {
 
     private fun writeElement(element: XmlNode.Element, values: XmlPreviewValues, notes: MutableList<XmlPreviewNote>, names: MutableSet<String>, out: StringBuilder) {
         element.attrs.forEach { attr -> attr.parts?.forEach { part -> if (part is AttrPart.Binding) names += identifiersOf(part.expression) } }
-        val needsRewrite = element.attrs.any { it.hasExpr }
+        val composeHeight = if (element.tag == COMPOSE_TAG && takesMeasuredHeight(element)) element.idName()?.let { values.composeHeights[it] } else null
+        val needsRewrite = element.attrs.any { it.hasExpr } || composeHeight != null
         if (!needsRewrite && element.startTagSource != null) {
             out.append(element.startTagSource)
         } else {
@@ -109,6 +117,7 @@ internal object XmlPreviewFrames {
                 if (!attr.hasExpr && attr.source != null) out.append(attr.source)
                 else out.append(' ').append(attributeText(element, attr, values, notes))
             }
+            if (composeHeight != null) out.append(" minHeight=\"").append(composeHeight).append("dp\"")
             out.append(element.startTagTail).append('>')
         }
         if (element.selfClosing) return
@@ -152,6 +161,20 @@ internal object XmlPreviewFrames {
         }
         return attr.name + "=" + quote + value + quote
     }
+
+    /**
+     * Whether `<compose>` element [element] is as tall as its interface (roadmap P11.8): it sets no height, or a
+     * wrapping one, and no minimum; the canvas then gives it the measured height of the interface.
+     */
+    fun takesMeasuredHeight(element: XmlNode.Element): Boolean {
+        if (element.attr("minHeight") != null) return false
+        val height = HEIGHT_ATTRS.firstNotNullOfOrNull { element.attr(it) } ?: return true
+        return !height.hasExpr && !height.hasBinding && height.value in WRAPPING
+    }
+
+    private const val COMPOSE_TAG = "compose"
+    private val HEIGHT_ATTRS = listOf("h", "height", "layout_height", "layoutHeight")
+    private val WRAPPING = setOf("auto", "wrap_content")
 
     /** The expression inside an E4X `{...}` fragment, trimmed. */
     fun expressionOf(source: String): String = source.trim().removePrefix("{").removeSuffix("}").trim()

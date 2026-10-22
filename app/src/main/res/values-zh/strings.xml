@@ -173,6 +173,7 @@
     <string name="designer_ui_bindings_hint">预览交给这个布局 {{ }} 名称的值, 由脚本的顶层声明求得. 覆盖值只影响画布, 脚本中的值不变.</string>
     <string name="designer_ui_category_button">按钮</string>
     <string name="designer_ui_category_choice">选择</string>
+    <string name="designer_ui_category_compose">Compose</string>
     <string name="designer_ui_category_image">图片</string>
     <string name="designer_ui_category_input">输入</string>
     <string name="designer_ui_category_layout">布局</string>
@@ -181,6 +182,11 @@
     <string name="designer_ui_category_other">其它</string>
     <string name="designer_ui_category_progress">进度</string>
     <string name="designer_ui_category_text">文本</string>
+    <string name="designer_ui_compose_added">已添加 compose #%1$s, 并在布局之后追加 compose.attach(ui.%1$s, ...); 在画布上点按它即可编辑界面.</string>
+    <string name="designer_ui_compose_back">返回布局</string>
+    <string name="designer_ui_compose_edit">编辑 Compose 界面</string>
+    <string name="designer_ui_compose_editing">ui.%1$s 中的 Compose 界面</string>
+    <string name="designer_ui_compose_failed">Compose 界面需要由 ui.layout 语句显示的布局, 不能加在原生 Android XML 中.</string>
     <string name="designer_ui_console_empty">AutoJs6 绘制这个布局时没有报告任何问题.</string>
     <string name="designer_ui_console_hint">布局预览不运行脚本. 这里显示 AutoJs6 绘制布局时报告的内容.</string>
     <string name="designer_ui_console_run_empty">脚本尚未输出任何内容.</string>

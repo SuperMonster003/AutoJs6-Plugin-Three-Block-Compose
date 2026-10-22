@@ -173,6 +173,7 @@
     <string name="designer_ui_bindings_hint">미리보기가 이 레이아웃의 {{ }} 이름에 넘기는 값으로, 스크립트의 최상위 선언에서 구합니다. 덮어쓴 값은 캔버스에만 반영되며 스크립트의 값은 바뀌지 않습니다.</string>
     <string name="designer_ui_category_button">버튼</string>
     <string name="designer_ui_category_choice">선택</string>
+    <string name="designer_ui_category_compose">Compose</string>
     <string name="designer_ui_category_image">이미지</string>
     <string name="designer_ui_category_input">입력</string>
     <string name="designer_ui_category_layout">레이아웃</string>
@@ -181,6 +182,11 @@
     <string name="designer_ui_category_other">기타</string>
     <string name="designer_ui_category_progress">진행률</string>
     <string name="designer_ui_category_text">텍스트</string>
+    <string name="designer_ui_compose_added">compose #%1$s 와 레이아웃 뒤의 compose.attach(ui.%1$s, ...) 를 추가했습니다. 캔버스에서 탭하면 인터페이스를 편집할 수 있습니다.</string>
+    <string name="designer_ui_compose_back">레이아웃으로 돌아가기</string>
+    <string name="designer_ui_compose_edit">Compose 인터페이스 편집</string>
+    <string name="designer_ui_compose_editing">ui.%1$s 의 Compose 인터페이스</string>
+    <string name="designer_ui_compose_failed">Compose 인터페이스에는 ui.layout 문으로 표시하는 레이아웃이 필요합니다. 네이티브 Android XML 에는 추가할 수 없습니다.</string>
     <string name="designer_ui_console_empty">AutoJs6 가 이 레이아웃을 그리는 동안 보고한 내용이 없습니다.</string>
     <string name="designer_ui_console_hint">레이아웃 미리보기는 스크립트를 실행하지 않습니다. 여기에는 AutoJs6 가 레이아웃을 그리는 동안 보고한 내용이 표시됩니다.</string>
     <string name="designer_ui_console_run_empty">스크립트가 아직 아무것도 출력하지 않았습니다.</string>

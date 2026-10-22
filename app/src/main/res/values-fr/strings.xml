@@ -173,6 +173,7 @@
     <string name="designer_ui_bindings_hint">Valeurs que l\'aperçu donne aux noms {{ }} de cette mise en page, évaluées à partir des déclarations de premier niveau du script. Les remplacements ne changent que le canevas; le script garde ses valeurs.</string>
     <string name="designer_ui_category_button">Boutons</string>
     <string name="designer_ui_category_choice">Choix</string>
+    <string name="designer_ui_category_compose">Compose</string>
     <string name="designer_ui_category_image">Images</string>
     <string name="designer_ui_category_input">Saisie</string>
     <string name="designer_ui_category_layout">Mises en page</string>
@@ -181,6 +182,11 @@
     <string name="designer_ui_category_other">Autres</string>
     <string name="designer_ui_category_progress">Progression</string>
     <string name="designer_ui_category_text">Texte</string>
+    <string name="designer_ui_compose_added">compose #%1$s et compose.attach(ui.%1$s, ...) ont été ajoutés après la mise en page; touchez-le sur le canevas pour modifier son interface.</string>
+    <string name="designer_ui_compose_back">Retour à la mise en page</string>
+    <string name="designer_ui_compose_edit">Modifier l\'interface Compose</string>
+    <string name="designer_ui_compose_editing">Interface Compose dans ui.%1$s</string>
+    <string name="designer_ui_compose_failed">Une interface Compose a besoin d\'une mise en page affichée par une instruction ui.layout, pas d\'Android XML natif.</string>
     <string name="designer_ui_console_empty">AutoJs6 n\'a rien signalé en dessinant cette mise en page.</string>
     <string name="designer_ui_console_hint">L\'aperçu de la mise en page n\'exécute pas le script. Cet onglet montre ce qu\'AutoJs6 a signalé en dessinant la mise en page.</string>
     <string name="designer_ui_console_run_empty">Le script n\'a encore rien écrit.</string>

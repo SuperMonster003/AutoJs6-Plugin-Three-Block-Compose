@@ -214,7 +214,7 @@ internal class DesignerActivity : StandaloneActivity() {
                 is ReadResult.ParsedUi -> {
                     // Roadmap P10.3: a ui-mode document gets its own session and a host preview client.
                     session = null
-                    uiSession = UiDesignerSession(result.document).also(::configureLayoutFiles)
+                    uiSession = UiDesignerSession(result.document, syntax = reader).also(::configureLayoutFiles)
                     previewClient?.close()
                     previewClient = UiPreviewClient(this, source.title)
                     parseError = null
@@ -846,6 +846,8 @@ internal class DesignerActivity : StandaloneActivity() {
         val exportFailed = stringResource(R.string.designer_export_failed)
         val failedText = stringResource(R.string.designer_ui_preview_failed)
         val insertFailed = stringResource(R.string.designer_insert_failed)
+        val composeAdded = stringResource(R.string.designer_ui_compose_added)
+        val composeFailed = stringResource(R.string.designer_ui_compose_failed)
         val sourceWritten = stringResource(R.string.designer_source_written)
         val sourceWriteFailed = stringResource(R.string.designer_source_write_failed)
         val sourceReimported = stringResource(R.string.designer_source_reimported)
@@ -855,6 +857,13 @@ internal class DesignerActivity : StandaloneActivity() {
         var syncPrompt by remember { mutableStateOf<SyncPrompt?>(null) }
         var relinkAction by remember { mutableStateOf<SyncAction?>(null) }
         val errors = session.diagnostics.count { it.severity == Severity.ERROR }
+        // Roadmap P11.8: an attached Compose interface is drawn as a compose project's canvas draws it and edited in
+        // the Compose panels, whose tab (the inspector first) and slot palette are kept apart from the layout's.
+        val images = remember(source.draftKey) { DesignImages(context, store.imageFolderOf(source.draftKey)) }
+        val theme = remember(appearance) { ThemeSpec(seedArgb = appearance.primary, dark = appearance.dark) }
+        var composeTab by remember { mutableStateOf(1) }
+        var composeSlot by remember { mutableStateOf<String?>(null) }
+        var composePaletteOpen by remember { mutableStateOf(false) }
 
         // The host draws the layout (D46): one client per screen, bound while the screen lives; the session follows
         // the canvas surface, and a loss is retried when the screen comes back.
@@ -881,7 +890,7 @@ internal class DesignerActivity : StandaloneActivity() {
         }
         val evaluator = remember { DeclarationEvaluator() }
         var request by remember { mutableStateOf<XmlPreviewRequest?>(null) }
-        LaunchedEffect(session.revision, session.fragment, session.bindingOverrides) {
+        LaunchedEffect(session.revision, session.fragment, session.bindingOverrides, session.composeHeights) {
             val document = session.document
             val fragment = session.fragment
             val script = session.script()
@@ -891,7 +900,7 @@ internal class DesignerActivity : StandaloneActivity() {
             }?.toList().orEmpty()
             // A TSX script is not JavaScript the sandbox could read; its literal {expr}s come with the document (P11.7).
             val evaluated = if (DeclarationEvaluator.SUPPORTED && document.dialect == Dialect.JS) withContext(Dispatchers.Default) { evaluator.evaluate(script, expressions) } else DeclarationEvaluator.Result.EMPTY
-            val built = XmlPreviewFrames.build(document, fragment, XmlPreviewValues(evaluated.declarations, session.bindingOverrides, evaluated.expressions))
+            val built = XmlPreviewFrames.build(document, fragment, XmlPreviewValues(evaluated.declarations, session.bindingOverrides, evaluated.expressions, session.composeHeights))
             request = built
             session.bindingNames = built.bindingNames
             session.previewDeclarations = evaluated.declarations
@@ -1238,7 +1247,9 @@ internal class DesignerActivity : StandaloneActivity() {
                 )
             },
             floatingActionButton = {
-                FloatingActionButton(onClick = { paletteOpen = true }, modifier = Modifier.testTag("designer-add")) {
+                FloatingActionButton(onClick = {
+                    if (session.attachmentSession != null) { composeSlot = null; composePaletteOpen = true } else paletteOpen = true
+                }, modifier = Modifier.testTag("designer-add")) {
                     Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.designer_add_component))
                 }
             },
@@ -1309,17 +1320,46 @@ internal class DesignerActivity : StandaloneActivity() {
                             text = Color(palette.text),
                             muted = Color(palette.muted),
                             surface = Color(palette.background),
+                            images = images,
+                            theme = theme,
                             statusText = statusText,
                             retryLabel = stringResource(R.string.designer_retry),
                             onRetry = retry,
-                            onSelect = { session.selectedId = it ?: session.selectedId },
+                            onSelect = { session.selectAttachment(null); session.selectedId = it ?: session.selectedId },
+                            onSelectAttached = { containerId, nodeId -> session.selectAttachment(containerId, nodeId) },
                             modifier = Modifier.fillMaxSize().padding(8.dp),
                         )
                     }
                 }
             }
             val panels: @Composable (Modifier) -> Unit = { placement ->
-                Column(placement) {
+                val attachedSession = session.attachmentSession
+                if (attachedSession != null) Column(placement) {
+                    // Roadmap P11.8: the Compose drawer of the selected `<compose>` element, back to the layout's panels.
+                    Row(Modifier.fillMaxWidth().background(Color(palette.background)).padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { session.selectAttachment(null) }, modifier = Modifier.testTag("designer-compose-back")) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.designer_ui_compose_back), tint = Color(palette.muted))
+                        }
+                        Text(
+                            stringResource(R.string.designer_ui_compose_editing, session.attachmentId.orEmpty()),
+                            color = Color(palette.text),
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            style = ScriptText.inline,
+                            modifier = Modifier.weight(1f).testTag("designer-compose-drawer"),
+                        )
+                    }
+                    TabRow(selectedTabIndex = composeTab, containerColor = Color(palette.background), contentColor = Color(palette.text)) {
+                        Tab(selected = composeTab == 0, onClick = { composeTab = 0 }, text = { Text(stringResource(R.string.designer_tab_outline), fontSize = 12.sp, maxLines = 1) }, modifier = Modifier.testTag("designer-tab-outline"))
+                        Tab(selected = composeTab == 1, onClick = { composeTab = 1 }, text = { Text(stringResource(R.string.designer_tab_inspector), fontSize = 12.sp, maxLines = 1) }, modifier = Modifier.testTag("designer-tab-inspector"))
+                        Tab(selected = composeTab == 2, onClick = { composeTab = 2 }, text = { Text(stringResource(R.string.designer_tab_state), fontSize = 12.sp, maxLines = 1) }, modifier = Modifier.testTag("designer-tab-state"))
+                    }
+                    when (composeTab) {
+                        0 -> OutlinePanel(attachedSession, palette, Modifier.fillMaxWidth())
+                        1 -> InspectorPanel(attachedSession, palette, onPickSlotComponent = { slot -> composeSlot = slot; composePaletteOpen = true }, modifier = Modifier.fillMaxWidth())
+                        else -> StatePanel(attachedSession, palette, Modifier.fillMaxWidth())
+                    }
+                } else Column(placement) {
                     TabRow(selectedTabIndex = tab, containerColor = Color(palette.background), contentColor = Color(palette.text)) {
                         Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.designer_tab_outline), fontSize = 12.sp, maxLines = 1) }, modifier = Modifier.testTag("designer-tab-outline"))
                         Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.designer_tab_inspector), fontSize = 12.sp, maxLines = 1) }, modifier = Modifier.testTag("designer-tab-inspector"))
@@ -1396,7 +1436,22 @@ internal class DesignerActivity : StandaloneActivity() {
         if (paletteOpen) UiPalette(session.catalog, palette, native = session.nativeFragment, onPick = { tag ->
             paletteOpen = false
             if (!session.insert(tag)) scope.launch { snackbar.showSnackbar(insertFailed) }
+        }, onPickCompose = {
+            paletteOpen = false
+            val added = session.addComposeContainer()
+            scope.launch { snackbar.showSnackbar(if (added != null) composeAdded.format(added) else composeFailed) }
         }, onDismiss = { paletteOpen = false })
+        if (composePaletteOpen) ComponentPalette(palette, onPick = { type ->
+            composePaletteOpen = false
+            val compose = session.attachmentSession
+            val slot = composeSlot
+            val inserted = when {
+                compose == null -> false
+                slot != null -> compose.selected?.let { node -> compose.execute(EditCommand.SetSlot(node.id, slot, DesignChild.Node(NodeTemplates.create(type))), merge = false) } ?: false
+                else -> compose.insert(type)
+            }
+            if (!inserted) scope.launch { snackbar.showSnackbar(insertFailed) }
+        }, onDismiss = { composePaletteOpen = false })
         val linkedName = (source as? DocumentSource.Local)?.name
         when (val prompt = syncPrompt) {
             null -> Unit

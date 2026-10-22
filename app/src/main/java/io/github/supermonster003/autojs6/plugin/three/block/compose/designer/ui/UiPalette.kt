@@ -32,7 +32,7 @@ import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.mod
 /** The component palette of a ui (XML) project (roadmap P10.4): the catalog's tags by the documentation's categories. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun UiPalette(catalog: UiCatalog, palette: StandalonePalette, native: Boolean = false, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+internal fun UiPalette(catalog: UiCatalog, palette: StandalonePalette, native: Boolean = false, onPick: (String) -> Unit, onPickCompose: (() -> Unit)? = null, onDismiss: () -> Unit) {
     // Roadmap P11.3: a native Android XML fragment gets view classes instead of AutoJs6 tags.
     val categories = remember(catalog, native) { if (native) UiTemplates.NATIVE_CATEGORIES else UiTemplates.categories(catalog) }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(palette.surface)) {
@@ -45,6 +45,19 @@ internal fun UiPalette(catalog: UiCatalog, palette: StandalonePalette, native: B
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { onPick(tag) }.padding(vertical = 10.dp).testTag("designer-palette-$tag")) {
                         Text(if (native) tag.substringAfterLast('.') else tag, color = Color(palette.text), fontSize = 15.sp, style = ScriptText.code, modifier = Modifier.weight(1f))
                         Text(if (native) tag.substringBeforeLast('.', "") else catalog.tag(tag)?.viewClass.orEmpty(), color = Color(palette.muted), fontSize = 12.sp)
+                    }
+                    HorizontalDivider(color = Color(palette.divider))
+                }
+            }
+            // Roadmap P11.8 / D70: a <compose> container with the compose.attach call that fills it; native XML has none.
+            if (onPickCompose != null && !native) {
+                item(key = "category-compose") {
+                    Text(stringResource(R.string.designer_ui_category_compose), color = Color(palette.muted), fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                }
+                item(key = "compose") {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { onPickCompose() }.padding(vertical = 10.dp).testTag("designer-palette-compose")) {
+                        Text("compose", color = Color(palette.text), fontSize = 15.sp, style = ScriptText.code, modifier = Modifier.weight(1f))
+                        Text("compose.attach", color = Color(palette.muted), fontSize = 12.sp)
                     }
                     HorizontalDivider(color = Color(palette.divider))
                 }

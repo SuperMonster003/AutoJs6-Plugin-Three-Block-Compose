@@ -173,6 +173,7 @@
     <string name="designer_ui_bindings_hint">プレビューがこのレイアウトの {{ }} 名に渡す値で, スクリプトのトップレベル宣言から求めます. 上書きはキャンバスだけに反映され, スクリプトの値は変わりません.</string>
     <string name="designer_ui_category_button">ボタン</string>
     <string name="designer_ui_category_choice">選択</string>
+    <string name="designer_ui_category_compose">Compose</string>
     <string name="designer_ui_category_image">画像</string>
     <string name="designer_ui_category_input">入力</string>
     <string name="designer_ui_category_layout">レイアウト</string>
@@ -181,6 +182,11 @@
     <string name="designer_ui_category_other">その他</string>
     <string name="designer_ui_category_progress">進捗</string>
     <string name="designer_ui_category_text">テキスト</string>
+    <string name="designer_ui_compose_added">compose #%1$s と, レイアウトの後に compose.attach(ui.%1$s, ...) を追加しました. キャンバスでタップするとインターフェースを編集できます.</string>
+    <string name="designer_ui_compose_back">レイアウトに戻る</string>
+    <string name="designer_ui_compose_edit">Compose インターフェースを編集</string>
+    <string name="designer_ui_compose_editing">ui.%1$s の Compose インターフェース</string>
+    <string name="designer_ui_compose_failed">Compose インターフェースには ui.layout 文で表示するレイアウトが必要です. ネイティブの Android XML には追加できません.</string>
     <string name="designer_ui_console_empty">AutoJs6 はこのレイアウトの描画で何も報告しませんでした.</string>
     <string name="designer_ui_console_hint">レイアウトプレビューはスクリプトを実行しません. ここには AutoJs6 がレイアウトの描画中に報告した内容を表示します.</string>
     <string name="designer_ui_console_run_empty">スクリプトはまだ何も出力していません.</string>

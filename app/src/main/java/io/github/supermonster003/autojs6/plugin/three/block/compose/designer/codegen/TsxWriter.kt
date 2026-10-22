@@ -45,15 +45,23 @@ object TsxWriter {
     fun mount(decl: MountDecl): String {
         val prefix = decl.bindName?.let { name -> if (decl.bindKeyword.isNullOrEmpty()) "$name = " else "${decl.bindKeyword} $name = " } ?: ""
         val options = decl.options?.let { ", " + ScriptWriter.options(it) } ?: ""
-        if (!decl.render) return prefix + "compose." + decl.kind.method + "(" + element(decl.root, "") + options + ");"
+        return prefix + "compose." + decl.kind.method + "(" + render(decl, "") + options + ");"
+    }
+
+    /**
+     * The interface of [decl] as a call argument: the render function or the element, its continuation lines
+     * indented from [indent], the indentation of the line it starts on (a `compose.attach` argument, roadmap P11.8).
+     */
+    fun render(decl: MountDecl, indent: String): String {
+        if (!decl.render) return element(decl.root, indent)
+        val inner = indent + INDENT
         return buildString {
-            append(prefix).append("compose.").append(decl.kind.method).append('(')
             append(if (decl.renderArrow) "() => {" else "function () {").append('\n')
-            decl.renderPrelude?.lines()?.forEach { line -> append(if (line.isBlank()) "" else INDENT + line).append('\n') }
-            val root = element(decl.root, INDENT + INDENT)
-            if ('\n' in root) append(INDENT).append("return (\n").append(INDENT + INDENT).append(root).append('\n').append(INDENT).append(");\n")
-            else append(INDENT).append("return ").append(root).append(";\n")
-            append('}').append(options).append(");")
+            decl.renderPrelude?.lines()?.forEach { line -> append(if (line.isBlank()) "" else inner + line).append('\n') }
+            val root = element(decl.root, inner + INDENT)
+            if ('\n' in root) append(inner).append("return (\n").append(inner + INDENT).append(root).append('\n').append(inner).append(");\n")
+            else append(inner).append("return ").append(root).append(";\n")
+            append(indent).append('}')
         }
     }
 

@@ -33,6 +33,13 @@ class TsxReader(private val catalog: ComponentCatalog = ComposeUiV2.interopCatal
     /** Maps [tree], the parser's tree of exactly [source] (already passed through [normalize]), to a document. */
     fun read(source: String, tree: TsTree): DesignDocument = Session(source, tree, catalog).read()
 
+    /**
+     * Reads [spec], the interface argument of a `compose.attach(...)` call in the TSX `"ui"` script [tree] belongs to
+     * ([source]), as a document whose only mount is that interface (roadmap P11.8 / 3.6); throws [DesignerParseError]
+     * with a position in [source] when the interface cannot be represented.
+     */
+    internal fun readAttachment(source: String, tree: TsTree, spec: TsNode): DesignDocument = Session(source, tree, catalog).attachment(spec)
+
     companion object {
         /** File name sent to the parser for documents; the extension selects TSX parsing. */
         const val FILE_NAME = "designer.tsx"
@@ -161,37 +168,7 @@ class TsxReader(private val catalog: ComponentCatalog = ComposeUiV2.interopCatal
             val arguments = call.nodes("arguments")
             if (arguments.isEmpty()) fail(call, "compose.${kind.method} needs the interface to show")
             if (arguments.size > 2) fail(arguments[2], "compose.${kind.method} takes the interface and an optional options object")
-            val spec = unwrap(arguments[0])
-            var render = false
-            var arrow = false
-            var prelude: String? = null
-            val root = when (spec.kind) {
-                "ArrowFunction", "FunctionExpression" -> {
-                    render = true
-                    arrow = spec.kind == "ArrowFunction"
-                    spec.nodes("parameters").firstOrNull()?.let { fail(it, "A render function takes no parameters") }
-                    unkeptFunctionPart(spec)?.let { (node, what) -> fail(node, "The designer cannot keep $what on the render function") }
-                    val body = spec.node("body") ?: fail(spec, "The render function has no body")
-                    if (body.kind != "Block") {
-                        rootNode(body)
-                    } else {
-                        val statements = body.nodes("statements")
-                        val last = statements.lastOrNull()?.takeIf { it.kind == "ReturnStatement" }
-                            ?: fail(spec, "The render function must end with return <element>")
-                        val returned = last.node("expression") ?: fail(last, "return must produce the root element")
-                        if (statements.size > 1) {
-                            var start = statements.first().start.coerceIn(0, source.length)
-                            val lineStart = source.lastIndexOf('\n', start - 1) + 1
-                            if (source.substring(lineStart, start).isBlank()) start = lineStart
-                            prelude = SourceText.dedent(source.substring(start, statements[statements.size - 2].end.coerceAtLeast(start)))
-                                .takeIf { it.isNotBlank() }
-                        }
-                        rootNode(returned)
-                    }
-                }
-                in JSX_KINDS -> rootNode(spec)
-                else -> fail(spec, "The interface must be a render function or a JSX element such as <compose.Column>")
-            }
+            val spec = interfaceOf(arguments[0])
             val options = arguments.getOrNull(1)?.let { option ->
                 if (option.kind == "ObjectLiteralExpression") HostOptions.Fields(option.nodes("properties").map { property ->
                     when (property.kind) {
@@ -208,7 +185,61 @@ class TsxReader(private val catalog: ComponentCatalog = ComposeUiV2.interopCatal
                     }
                 }) else HostOptions.Expression(slice(option))
             }
-            return MountDecl(kind, root, bindKeyword, bindName, render, arrow, prelude, options)
+            return MountDecl(kind, spec.root, bindKeyword, bindName, spec.render, spec.arrow, spec.prelude, options)
+        }
+
+        /**
+         * Reads [spec] as an attached interface (roadmap P11.8 / 3.6): the states are the `compose.state`
+         * declarations anywhere in the tree (the first one of a name; one the designer cannot read is not a state).
+         */
+        fun attachment(spec: TsNode): DesignDocument {
+            val states = LinkedHashMap<String, StateDecl>()
+            fun visit(node: TsNode) {
+                if (node.kind == "VariableStatement") {
+                    val state = try { stateOf(node) } catch (error: DesignerParseError) { null }
+                    if (state != null && state.name !in states) states[state.name] = state
+                }
+                node.children.forEach(::visit)
+            }
+            visit(tree.root)
+            stateNames += states.keys
+            val spec = interfaceOf(spec)
+            val mount = MountDecl(HostKind.MOUNT, spec.root, render = spec.render, renderArrow = spec.arrow, renderPrelude = spec.prelude)
+            return DesignDocument(states.values.map { Segment.State(it) } + Segment.Mount(mount), nextId, Dialect.TSX)
+        }
+
+        /** The interface a mount shows (or an attach call puts into its container): a render function or an element. */
+        private class Interface(val root: DesignNode, val render: Boolean, val arrow: Boolean, val prelude: String?)
+
+        private fun interfaceOf(argument: TsNode): Interface {
+            val spec = unwrap(argument)
+            return when (spec.kind) {
+                "ArrowFunction", "FunctionExpression" -> {
+                    spec.nodes("parameters").firstOrNull()?.let { fail(it, "A render function takes no parameters") }
+                    unkeptFunctionPart(spec)?.let { (node, what) -> fail(node, "The designer cannot keep $what on the render function") }
+                    val body = spec.node("body") ?: fail(spec, "The render function has no body")
+                    var prelude: String? = null
+                    val root = if (body.kind != "Block") {
+                        rootNode(body)
+                    } else {
+                        val statements = body.nodes("statements")
+                        val last = statements.lastOrNull()?.takeIf { it.kind == "ReturnStatement" }
+                            ?: fail(spec, "The render function must end with return <element>")
+                        val returned = last.node("expression") ?: fail(last, "return must produce the root element")
+                        if (statements.size > 1) {
+                            var start = statements.first().start.coerceIn(0, source.length)
+                            val lineStart = source.lastIndexOf('\n', start - 1) + 1
+                            if (source.substring(lineStart, start).isBlank()) start = lineStart
+                            prelude = SourceText.dedent(source.substring(start, statements[statements.size - 2].end.coerceAtLeast(start)))
+                                .takeIf { it.isNotBlank() }
+                        }
+                        rootNode(returned)
+                    }
+                    Interface(root, render = true, arrow = spec.kind == "ArrowFunction", prelude = prelude)
+                }
+                in JSX_KINDS -> Interface(rootNode(spec), render = false, arrow = false, prelude = null)
+                else -> fail(spec, "The interface must be a render function or a JSX element such as <compose.Column>")
+            }
         }
 
         /** A part of a function the model has no place for, with its description; null when there is none. */

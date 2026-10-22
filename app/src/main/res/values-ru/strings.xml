@@ -173,6 +173,7 @@
     <string name="designer_ui_bindings_hint">Значения, которые предпросмотр подставляет в имена {{ }} этого макета, вычисленные из объявлений верхнего уровня скрипта. Переопределения меняют только холст; значения в скрипте остаются прежними.</string>
     <string name="designer_ui_category_button">Кнопки</string>
     <string name="designer_ui_category_choice">Выбор</string>
+    <string name="designer_ui_category_compose">Compose</string>
     <string name="designer_ui_category_image">Изображения</string>
     <string name="designer_ui_category_input">Ввод</string>
     <string name="designer_ui_category_layout">Макеты</string>
@@ -181,6 +182,11 @@
     <string name="designer_ui_category_other">Прочее</string>
     <string name="designer_ui_category_progress">Прогресс</string>
     <string name="designer_ui_category_text">Текст</string>
+    <string name="designer_ui_compose_added">После макета добавлены compose #%1$s и compose.attach(ui.%1$s, ...); коснитесь его на холсте, чтобы изменить интерфейс.</string>
+    <string name="designer_ui_compose_back">Назад к макету</string>
+    <string name="designer_ui_compose_edit">Изменить интерфейс Compose</string>
+    <string name="designer_ui_compose_editing">Интерфейс Compose в ui.%1$s</string>
+    <string name="designer_ui_compose_failed">Интерфейсу Compose нужен макет, который выводит оператор ui.layout, а не нативный Android XML.</string>
     <string name="designer_ui_console_empty">AutoJs6 ничего не сообщил при отрисовке этого макета.</string>
     <string name="designer_ui_console_hint">Предпросмотр макета не выполняет скрипт. На этой вкладке показано, что AutoJs6 сообщил при отрисовке макета.</string>
     <string name="designer_ui_console_run_empty">Скрипт пока ничего не вывел.</string>

@@ -24,6 +24,7 @@ import org.mozilla.javascript.Token
 import org.mozilla.javascript.ast.ArrayLiteral
 import org.mozilla.javascript.ast.Assignment
 import org.mozilla.javascript.ast.AstNode
+import org.mozilla.javascript.ast.AstRoot
 import org.mozilla.javascript.ast.ErrorCollector
 import org.mozilla.javascript.ast.ExpressionStatement
 import org.mozilla.javascript.ast.FunctionCall
@@ -55,6 +56,13 @@ class ScriptReader(private val catalog: ComponentCatalog = ComposeUiV2.interopCa
 
     fun read(source: String): DesignDocument = Session(source.replace("\r\n", "\n").replace('\r', '\n'), catalog).read()
 
+    /**
+     * Reads [spec], the interface argument of a `compose.attach(...)` call in the `"ui"` mode script [root] was parsed
+     * from ([source], LF line breaks), as a document whose only mount is that interface (roadmap P11.8 / 3.6); throws
+     * [DesignerParseError] with a position in [source] when the interface cannot be represented.
+     */
+    internal fun readAttachment(source: String, root: AstRoot, spec: AstNode): DesignDocument = Session(source, catalog).attachment(root, spec)
+
     companion object {
         /**
          * Syntax-checks a handler the inspector edited (parse only, never evaluated); positions are relative
@@ -77,6 +85,25 @@ class ScriptReader(private val catalog: ComponentCatalog = ComposeUiV2.interopCa
 
         /** Parses for syntax only. */
         fun parseOnly() { parseAst() }
+
+        /**
+         * Reads [spec] as an attached interface (roadmap P11.8 / 3.6): the states are the `compose.state`
+         * declarations anywhere in [root] (the first one of a name; one the designer cannot read is not a state).
+         */
+        fun attachment(root: AstRoot, spec: AstNode): DesignDocument {
+            val states = LinkedHashMap<String, StateDecl>()
+            root.visitAll { node ->
+                if (node is VariableDeclaration) {
+                    val state = try { stateOf(node) } catch (error: DesignerParseError) { null }
+                    if (state != null && state.name !in states) states[state.name] = state
+                }
+                true
+            }
+            stateNames += states.keys
+            val spec = interfaceOf(spec)
+            val mount = MountDecl(HostKind.MOUNT, spec.root, render = spec.render, renderArrow = spec.arrow, renderPrelude = spec.prelude)
+            return DesignDocument(states.values.map { Segment.State(it) } + Segment.Mount(mount), nextId)
+        }
 
         fun read(): DesignDocument {
             val root = parseAst()
@@ -109,7 +136,7 @@ class ScriptReader(private val catalog: ComponentCatalog = ComposeUiV2.interopCa
 
         // ---------------------------------------------------------------- Rhino
 
-        private fun parseAst(): org.mozilla.javascript.ast.AstRoot {
+        private fun parseAst(): AstRoot {
             val environment = CompilerEnvirons().apply {
                 languageVersion = Context.VERSION_ES6
                 isIdeMode = true
@@ -213,41 +240,41 @@ class ScriptReader(private val catalog: ComponentCatalog = ComposeUiV2.interopCa
             val arguments = call.arguments
             if (arguments.isEmpty()) fail(call, "compose.${kind.method} needs the interface to show")
             if (arguments.size > 2) fail(arguments[2], "compose.${kind.method} takes the interface and an optional options object")
-            val spec = arguments[0]
-            var render = false
-            var arrow = false
-            var prelude: String? = null
-            val root = when (spec) {
-                is FunctionNode -> {
-                    render = true
-                    arrow = spec.functionType == FunctionNode.ARROW_FUNCTION
-                    if (spec.params.isNotEmpty()) fail(spec.params[0], "A render function takes no parameters")
-                    val statements = bodyStatements(spec)
-                    val last = statements.lastOrNull() as? ReturnStatement
-                        ?: fail(spec, "The render function must end with return <node>")
-                    val returned = last.returnValue ?: fail(last, "return must produce the root node")
-                    if (statements.size > 1) {
-                        val first = statements.first()
-                        // Start at the beginning of the first statement's line so that every line carries its
-                        // own indentation and dedent() removes the common prefix uniformly.
-                        var start = first.absolutePosition.coerceIn(0, source.length)
-                        val lineStart = source.lastIndexOf('\n', start - 1) + 1
-                        if (source.substring(lineStart, start).isBlank()) start = lineStart
-                        prelude = dedent(source.substring(start, statementEnd(statements[statements.size - 2]).coerceAtLeast(start)))
-                            .takeIf { it.isNotBlank() }
-                    }
-                    rootNode(returned)
-                }
-                is FunctionCall -> rootNode(spec)
-                else -> fail(spec, "The interface must be a render function or a compose component factory call such as compose.Column(...)")
-            }
+            val spec = interfaceOf(arguments[0])
             val options = arguments.getOrNull(1)?.let { option ->
                 if (option is ObjectLiteral) HostOptions.Fields(option.elements.map { element ->
                     val property = element as? ObjectProperty ?: fail(element, "Options cannot use spread syntax")
                     (keyName(property.key) ?: fail(property.key, "Option keys must be plain names")) to propValue(property.value)
                 }) else HostOptions.Expression(slice(option))
             }
-            return MountDecl(kind, root, bindKeyword, bindName, render, arrow, prelude, options)
+            return MountDecl(kind, spec.root, bindKeyword, bindName, spec.render, spec.arrow, spec.prelude, options)
+        }
+
+        /** The interface a mount shows (or an attach call puts into its container): a render function or a node. */
+        private class Interface(val root: DesignNode, val render: Boolean, val arrow: Boolean, val prelude: String?)
+
+        private fun interfaceOf(spec: AstNode): Interface = when (spec) {
+            is FunctionNode -> {
+                if (spec.params.isNotEmpty()) fail(spec.params[0], "A render function takes no parameters")
+                val statements = bodyStatements(spec)
+                val last = statements.lastOrNull() as? ReturnStatement
+                    ?: fail(spec, "The render function must end with return <node>")
+                val returned = last.returnValue ?: fail(last, "return must produce the root node")
+                var prelude: String? = null
+                if (statements.size > 1) {
+                    val first = statements.first()
+                    // Start at the beginning of the first statement's line so that every line carries its
+                    // own indentation and dedent() removes the common prefix uniformly.
+                    var start = first.absolutePosition.coerceIn(0, source.length)
+                    val lineStart = source.lastIndexOf('\n', start - 1) + 1
+                    if (source.substring(lineStart, start).isBlank()) start = lineStart
+                    prelude = dedent(source.substring(start, statementEnd(statements[statements.size - 2]).coerceAtLeast(start)))
+                        .takeIf { it.isNotBlank() }
+                }
+                Interface(rootNode(returned), render = true, arrow = spec.functionType == FunctionNode.ARROW_FUNCTION, prelude = prelude)
+            }
+            is FunctionCall -> Interface(rootNode(spec), render = false, arrow = false, prelude = null)
+            else -> fail(spec, "The interface must be a render function or a compose component factory call such as compose.Column(...)")
         }
 
         private fun bodyStatements(function: FunctionNode): List<AstNode> {

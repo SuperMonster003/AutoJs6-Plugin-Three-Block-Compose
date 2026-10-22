@@ -5,9 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.codegen.ComposeAttachStubs
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.codegen.UiScriptWriter
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.idName
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.Diagnostic
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.EditCommand
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.PreviewCapability
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.PreviewDifference
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.PreviewDifferences
@@ -23,7 +25,9 @@ import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.mod
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.UiValidator
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.XmlNode
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.parse.DesignerParseError
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.parse.DocumentReader
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.parse.PreviewDifferenceScanner
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.parse.SyntaxCheck
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.parse.UiLayoutFiles
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.preview.DropPlacements
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.preview.LayoutAxis
@@ -40,6 +44,8 @@ internal class UiDesignerSession(
     val catalog: UiCatalog = UiCatalog.load(),
     /** The saved text of each layout file (roadmap P11.3), by path; a restored draft passes the files as they are on disk. */
     savedFiles: Map<String, String> = UiScriptWriter.writeFiles(initial),
+    /** Checks the handlers of attached Compose interfaces (roadmap P11.8) in the document's language. */
+    val syntax: SyntaxCheck = DocumentReader(initial.dialect, null),
 ) {
     private val history = UiEditHistory(initial)
     private val validator = UiValidator(catalog)
@@ -104,6 +110,18 @@ internal class UiDesignerSession(
     var requestDocumentFolder: (() -> Unit)? by mutableStateOf(null)
     /** False when the preview host is known not to take a project's files (before contract v3, roadmap P11.3). */
     var hostResources: Boolean by mutableStateOf(true)
+    /** The `ui.<id>` whose attached Compose interface the drawer edits (roadmap P11.8), or null for the layout. */
+    var attachmentId: String? by mutableStateOf(null)
+        private set
+    /** The Compose session of [attachmentId]: the Compose panels edit through it, into this session's history. */
+    var attachmentSession: DesignerSession? by mutableStateOf(null)
+        private set
+    /**
+     * The height (dp) each attached interface takes on the canvas, by container id (roadmap P11.8): the preview gives
+     * a `<compose>` element without a height of its own this as its minimum height, as the running script fills it.
+     */
+    var composeHeights: Map<String, Int> by mutableStateOf(emptyMap())
+        private set
 
     val canUndo: Boolean get() = history.canUndo
     val canRedo: Boolean get() = history.canRedo
@@ -143,7 +161,43 @@ internal class UiDesignerSession(
         fragment = document.rootFragment.coerceAtLeast(0)
         selectedId = document.root?.id
         dirty = false
+        selectAttachment(null)
         publishQuiet()
+    }
+
+    /**
+     * Selects node [nodeId] (by default the root) of the Compose interface attached to `ui.<containerId>` (roadmap
+     * P11.8), together with its `<compose>` element: the drawer switches to the Compose panels. Null goes back to the layout.
+     */
+    fun selectAttachment(containerId: String?, nodeId: Int? = null) {
+        val attached = containerId?.let(document::attachment)
+        if (containerId == null || attached == null) {
+            attachmentId = null
+            attachmentSession = null
+            return
+        }
+        val session = attachmentSession?.takeIf { attachmentId == containerId }
+            ?: DesignerSession(attached.document, syntax = syntax, owner = AttachmentOwner(containerId))
+        attachmentId = containerId
+        attachmentSession = session
+        session.selectedId = nodeId?.takeIf { session.document.node(it) != null } ?: session.document.root?.id
+        containerOf(containerId)?.let { selectedId = it.id }
+    }
+
+    /** The `<compose>` element whose id is [containerId] in the fragment on the canvas, else anywhere in the document. */
+    fun containerOf(containerId: String): XmlNode.Element? {
+        fun XmlNode.Element.matches() = tag == ComposeAttachStubs.TAG && idName() == containerId
+        return root?.descendants()?.firstOrNull { it.matches() }
+            ?: document.fragments.asSequence().flatMap { it.root.descendants() }.firstOrNull { it.matches() }
+    }
+
+    private inner class AttachmentOwner(private val containerId: String) : DesignerSession.Owner {
+        override fun execute(command: EditCommand, merge: Boolean) = this@UiDesignerSession.execute(UiEditCommand.EditAttachment(containerId, command), merge)
+        override fun seal() = this@UiDesignerSession.seal()
+    }
+
+    fun setComposeHeight(containerId: String, height: Int) {
+        if (composeHeights[containerId] != height) composeHeights = composeHeights + (containerId to height)
     }
 
     fun setBindingOverride(name: String, json: String?) {
@@ -164,6 +218,10 @@ internal class UiDesignerSession(
         val script = UiScriptWriter.write(document)
         declaredNames = declaredNamesOf(script)
         differences = PreviewDifferenceScanner.scan(script)
+        attachmentId?.let { id ->
+            val attached = document.attachment(id)
+            if (attached == null) selectAttachment(null) else attachmentSession?.follow(attached.document)
+        }
     }
 
     /**
@@ -185,6 +243,29 @@ internal class UiDesignerSession(
         }
         if (inserted) selectedId = before
         return inserted
+    }
+
+    /**
+     * Inserts a `<compose>` container where [insert] puts an element, with the `compose.attach(ui.<id>, ...)` call
+     * that fills it (roadmap P11.8 / D70), as one undo step, and opens its interface in the Compose drawer. Returns
+     * the container id, or null when the layout leaves no place for the call (see [ComposeAttachStubs.add]).
+     */
+    fun addComposeContainer(): String? {
+        val target = selected ?: root ?: return null
+        val (parentId, index) = if (isContainer(target)) {
+            target.id to target.elementChildren.size
+        } else {
+            val parent = document.parentOf(target.id)?.let { document.element(it.parentId) } ?: return null
+            parent.id to parent.elementChildren.indexOfFirst { it.id == target.id } + 1
+        }
+        val taken = document.composeAttachments.map { it.containerId } + document.attachmentProblems.mapNotNull { it.containerId }
+        val id = freshId(ComposeAttachStubs.TAG, taken)
+        val before = document.nextId
+        val next = ComposeAttachStubs.add(document, parentId, index, id) ?: return null
+        if (!execute(UiEditCommand.ReplaceDocument(next), merge = false)) return null
+        selectedId = before
+        selectAttachment(id)
+        return id
     }
 
     /** Whether the fragment on the canvas is native Android XML (roadmap P11.3): the palette offers view classes then. */
@@ -236,8 +317,8 @@ internal class UiDesignerSession(
         return added
     }
 
-    private fun freshId(tag: String): String {
-        val taken = document.elementIds()
+    private fun freshId(tag: String, reserved: Collection<String> = emptyList()): String {
+        val taken = document.elementIds() + reserved
         val stem = tag.filter { it.isLetterOrDigit() || it == '_' }.ifEmpty { "view" }
         var counter = 1
         while ("$stem$counter" in taken) counter++

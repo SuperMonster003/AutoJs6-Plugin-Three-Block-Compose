@@ -173,6 +173,7 @@
     <string name="designer_ui_bindings_hint">預覽交給這個佈局 {{ }} 名稱的值, 由指令碼的頂層宣告求得. 覆寫值只影響畫布, 指令碼中的值不變.</string>
     <string name="designer_ui_category_button">按鈕</string>
     <string name="designer_ui_category_choice">選擇</string>
+    <string name="designer_ui_category_compose">Compose</string>
     <string name="designer_ui_category_image">圖片</string>
     <string name="designer_ui_category_input">輸入</string>
     <string name="designer_ui_category_layout">佈局</string>
@@ -181,6 +182,11 @@
     <string name="designer_ui_category_other">其他</string>
     <string name="designer_ui_category_progress">進度</string>
     <string name="designer_ui_category_text">文字</string>
+    <string name="designer_ui_compose_added">已新增 compose #%1$s, 並在佈局之後附加 compose.attach(ui.%1$s, ...); 在畫布上點按它即可編輯介面.</string>
+    <string name="designer_ui_compose_back">返回佈局</string>
+    <string name="designer_ui_compose_edit">編輯 Compose 介面</string>
+    <string name="designer_ui_compose_editing">ui.%1$s 中的 Compose 介面</string>
+    <string name="designer_ui_compose_failed">Compose 介面需要由 ui.layout 敘述顯示的佈局, 不能加在原生 Android XML 中.</string>
     <string name="designer_ui_console_empty">AutoJs6 繪製這個佈局時沒有回報任何問題.</string>
     <string name="designer_ui_console_hint">佈局預覽不執行指令碼. 這裡顯示 AutoJs6 繪製佈局時回報的內容.</string>
     <string name="designer_ui_console_run_empty">指令碼尚未輸出任何內容.</string>

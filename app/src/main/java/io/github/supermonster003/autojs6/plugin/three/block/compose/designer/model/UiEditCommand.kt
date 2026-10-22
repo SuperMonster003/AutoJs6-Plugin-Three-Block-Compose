@@ -152,6 +152,19 @@ sealed class UiEditCommand {
     }
 
     /**
+     * Applies the Compose edit [command] to the interface `compose.attach` puts into `ui.<containerId>` (roadmap P11.8):
+     * the edits of the Compose drawer go into the same undo history as the layout's. Only the argument is written back
+     * (D35), so an edit outside the mount (a state declaration) is refused rather than lost on save.
+     */
+    data class EditAttachment(val containerId: String, val command: EditCommand) : UiEditCommand() {
+        override val mergeToken get() = command.mergeToken?.let { Pair(containerId, it) }
+        override fun apply(document: UiDocument): UiDocument = document.mapAttachment(containerId) { attached ->
+            val next = command.apply(attached)
+            if (next.segments.filterNot { it is Segment.Mount } == attached.segments.filterNot { it is Segment.Mount }) next else attached
+        }
+    }
+
+    /**
      * Replaces the whole document with [document], read back from a rewritten script (roadmap P11.3 / D66: moving a
      * literal into a layout file, adding a layout file); undo restores the previous document as it was.
      */

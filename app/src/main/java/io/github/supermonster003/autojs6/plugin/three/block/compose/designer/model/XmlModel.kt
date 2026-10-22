@@ -184,7 +184,30 @@ sealed class UiSegment {
     /** Source text the designer does not interpret, in place. */
     data class Opaque(val source: String) : UiSegment()
     data class Layout(val fragment: XmlFragment) : UiSegment()
+    /** The interface argument of a `compose.attach(ui.<id>, ...)` call (roadmap P11.8). */
+    data class Compose(val attachment: ComposeAttachment) : UiSegment()
 }
+
+/**
+ * The interface a `compose.attach(ui.<id>, <render function or node>)` call puts into the `<compose id="...">`
+ * element [containerId] (roadmap P11.8 / 3.6): the argument read as a compose [DesignDocument] whose only mount is
+ * the attached interface, with the script's `compose.state` declarations (from anywhere in the script) before it
+ * for the state panel. While [document] equals [read] the argument is written back byte for byte ([source]); once
+ * edited, only the argument is rewritten in the compose writer's form, indented like the line it starts on.
+ */
+data class ComposeAttachment(
+    val containerId: String,
+    /** The argument as the script writes it. */
+    val source: String,
+    val read: DesignDocument,
+    val document: DesignDocument = read,
+    /** 1-based position of the `compose.attach` call, for the issues list. */
+    val line: Int = 1,
+    val column: Int = 1,
+)
+
+/** A `compose.attach(...)` call whose interface the designer cannot read (roadmap P11.8); it stays opaque and is listed as an issue. */
+data class AttachmentProblem(val containerId: String?, val line: Int, val column: Int, val reason: String)
 
 /**
  * A `"ui";` mode script: segments in file order, the index (among layout segments) of the canvas root, and the
@@ -214,7 +237,26 @@ data class UiDocument(
      * expression text without braces, which the preview needs without running the script.
      */
     val literalValues: Map<String, String> = emptyMap(),
+    /** The `compose.attach(...)` calls whose interface could not be read (roadmap P11.8), in script order. */
+    val attachmentProblems: List<AttachmentProblem> = emptyList(),
 ) {
+    /** The readable `compose.attach(...)` interfaces (roadmap P11.8), in script order; the first one per container wins. */
+    val composeAttachments: List<ComposeAttachment> get() = segments.filterIsInstance<UiSegment.Compose>().map { it.attachment }
+
+    /** The interface attached to the `<compose>` element with id [containerId], or null. */
+    fun attachment(containerId: String): ComposeAttachment? = composeAttachments.firstOrNull { it.containerId == containerId }
+
+    /** Returns a copy whose attachment for [containerId] has [transform]'s document; unchanged when there is none. */
+    fun mapAttachment(containerId: String, transform: (DesignDocument) -> DesignDocument): UiDocument {
+        var changed = false
+        val segments = segments.map { segment ->
+            if (segment !is UiSegment.Compose || changed || segment.attachment.containerId != containerId) return@map segment
+            val next = transform(segment.attachment.document)
+            if (next == segment.attachment.document) segment else { changed = true; UiSegment.Compose(segment.attachment.copy(document = next)) }
+        }
+        return if (changed) copy(segments = segments) else this
+    }
+
     /** The ids (`id` or `android:id` values written as plain text) of every element, for generating a fresh one. */
     fun elementIds(): Set<String> = elements().mapNotNull { it.idName() }.toSet()
 

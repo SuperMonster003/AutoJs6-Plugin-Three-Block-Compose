@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import io.github.supermonster003.autojs6.plugin.three.block.compose.R
 import io.github.supermonster003.autojs6.plugin.three.block.compose.app.ScriptText
 import io.github.supermonster003.autojs6.plugin.three.block.compose.app.StandalonePalette
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.codegen.ComposeAttachStubs
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.AttrPart
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.Dialect
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.UiAndroidCatalog
@@ -120,6 +121,11 @@ internal fun UiInspectorPanel(session: UiDesignerSession, palette: StandalonePal
         }
         if (!native && tag == null && !widget && viewClass == null) {
             Text(stringResource(R.string.designer_ui_unknown_tag), color = Color(palette.danger), fontSize = 13.sp)
+        }
+        // Roadmap P11.8: the interface compose.attach puts into this container is edited in the Compose drawer.
+        val attached = element.idName()?.takeIf { element.tag == ComposeAttachStubs.TAG && session.document.attachment(it) != null }
+        if (attached != null) {
+            TextButton(onClick = { session.selectAttachment(attached) }, modifier = Modifier.testTag("designer-ui-compose-edit")) { Text(stringResource(R.string.designer_ui_compose_edit)) }
         }
         // id: AutoJs6's id="x", or android:id="@+id/x" in native XML
         UiSectionTitle(if (native) "android:id" else "id", palette)

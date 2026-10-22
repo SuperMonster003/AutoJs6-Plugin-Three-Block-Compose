@@ -1,6 +1,8 @@
 package io.github.supermonster003.autojs6.plugin.three.block.compose.designer.parse
 
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.AttachmentProblem
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.AttrPart
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.ComposeAttachment
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.Dialect
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.FragmentUsage
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.model.TsxFragmentSource
@@ -57,9 +59,10 @@ class TsxUiReader {
             val widgets = LinkedHashSet<String>()
             val handlers = LinkedHashSet<UiHandler>()
             var androidLayoutCall: TsNode? = null
+            val attachCalls = ArrayList<TsNode>()
             visit(tree.root, null) { node ->
                 when (node.kind) {
-                    "CallExpression" -> when (uiMethod(node)) {
+                    "CallExpression" -> if (isComposeAttach(node)) attachCalls += node else when (uiMethod(node)) {
                         "layout", "inflate" -> calls += node
                         "useAndroidLayout" -> if (androidLayoutCall.let { it == null || node.start < it.start }) androidLayoutCall = node
                         "registerWidget" -> node.nodes("arguments").firstOrNull()?.takeIf { it.kind == "StringLiteral" }?.text?.let { widgets += it }
@@ -124,10 +127,26 @@ class TsxUiReader {
                 if (kept.none { root.node.start >= it.node.start && root.node.end <= it.node.end }) kept += root
                 kept
             }
+            val problems = ArrayList<AttachmentProblem>()
+            val attachments = attachmentsOf(attachCalls, outer, problems)
+            // A stub never goes past an attached interface: the stub offset is counted in the text right after a layout.
+            outer.forEach { root ->
+                if (root.stubOffset >= 0 && attachments.any { it.start >= root.node.end && it.start < root.node.end + root.stubOffset }) root.stubOffset = -1
+            }
             val segments = ArrayList<UiSegment>()
             var cursor = 0
             var rootIndex = -1
+            var nextAttachment = 0
+            fun attachmentsBefore(offset: Int) {
+                while (nextAttachment < attachments.size && attachments[nextAttachment].start < offset) {
+                    val attachment = attachments[nextAttachment++]
+                    if (attachment.start > cursor) segments += UiSegment.Opaque(source.substring(cursor, attachment.start))
+                    segments += UiSegment.Compose(attachment.attachment)
+                    cursor = attachment.end
+                }
+            }
             outer.forEachIndexed { index, root ->
+                attachmentsBefore(root.node.start)
                 if (root.node.start > cursor) segments += UiSegment.Opaque(source.substring(cursor, root.node.start))
                 val element = layoutRoot(root.node)
                 val fragment = XmlFragment(
@@ -138,12 +157,65 @@ class TsxUiReader {
                 if (root === rootLayout) rootIndex = index
                 cursor = root.node.end
             }
+            attachmentsBefore(Int.MAX_VALUE)
             if (cursor < source.length) segments += UiSegment.Opaque(source.substring(cursor))
             if (rootIndex < 0) fail(0, "The script has no ui.layout(...) call with a JSX layout")
             return UiDocument(
                 segments, rootIndex, nextId, widgets, handlers, androidLayout = androidLayoutOf(androidLayoutCall),
-                dialect = Dialect.TSX, literalValues = literalValues,
+                dialect = Dialect.TSX, literalValues = literalValues, attachmentProblems = problems,
             )
+        }
+
+        /** An attached interface: the source range of the argument and what it reads as. */
+        private class Attached(val start: Int, val end: Int, val attachment: ComposeAttachment)
+
+        /**
+         * The interfaces of the `compose.attach(ui.<id>, <interface>)` / `compose.attach((ui as any).<id>, ...)` calls
+         * (roadmap P11.8 / 3.6), in script order and without overlaps; a call whose container or interface cannot be
+         * read stays opaque and goes to [problems]. Calls inside a layout or another attached interface are skipped.
+         */
+        private fun attachmentsOf(calls: List<TsNode>, layouts: List<Root>, problems: MutableList<AttachmentProblem>): List<Attached> {
+            val attached = ArrayList<Attached>()
+            val reader = TsxReader()
+            for (call in calls.sortedBy { it.start }) {
+                if (layouts.any { call.start >= it.node.start && call.start < it.node.end } || attached.any { call.start >= it.start && call.start < it.end }) continue
+                val line = SourceText.lineOf(source, call.start)
+                val column = SourceText.columnOf(source, call.start)
+                val arguments = call.nodes("arguments")
+                val id = arguments.firstOrNull()?.let(::unwrap)?.takeIf { it.kind == "PropertyAccessExpression" && isUi(it.node("expression")) }?.node("name")?.text
+                if (id == null) {
+                    problems += AttachmentProblem(null, line, column, "compose.attach needs ui.<id> of a <compose> element as its container")
+                    continue
+                }
+                val spec = arguments.getOrNull(1)
+                if (spec == null) {
+                    problems += AttachmentProblem(id, line, column, "compose.attach needs the interface to show")
+                    continue
+                }
+                if (layouts.any { it.node.start < spec.end && it.node.end > spec.start }) {
+                    problems += AttachmentProblem(id, line, column, "The interface attached to ui.$id holds a ui layout")
+                    continue
+                }
+                if (attached.any { it.attachment.containerId == id }) {
+                    problems += AttachmentProblem(id, line, column, "ui.$id already has an interface attached earlier in the script")
+                    continue
+                }
+                val document = try {
+                    reader.readAttachment(source, tree, spec)
+                } catch (error: DesignerParseError) {
+                    problems += AttachmentProblem(id, error.line, error.column, error.reason)
+                    continue
+                }
+                attached += Attached(spec.start, spec.end, ComposeAttachment(id, source.substring(spec.start, spec.end), document, line = line, column = column))
+            }
+            return attached
+        }
+
+        private fun isComposeAttach(call: TsNode): Boolean {
+            if (call.has("questionDotToken")) return false
+            val target = call.node("expression")?.takeIf { it.kind == "PropertyAccessExpression" } ?: return false
+            val receiver = target.node("expression")?.takeIf { it.kind == "Identifier" }?.text
+            return (receiver == "compose" || receiver == "\$compose") && target.node("name")?.text == "attach"
         }
 
         // ---------------------------------------------------------------- tree helpers

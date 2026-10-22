@@ -32,7 +32,18 @@ internal class DesignerSession(
     val catalog: ComponentCatalog = ComposeUiV2.interopCatalog,
     /** Checks edited handlers in the document's language (Rhino for JavaScript, the TypeScript parser for TSX). */
     val syntax: SyntaxCheck = DocumentReader(initial.dialect, null),
+    /**
+     * Set for the interface `compose.attach` puts into a `"ui"` layout (roadmap P11.8): edits go into the owner's
+     * history, which hands the edited document back through [follow].
+     */
+    private val owner: Owner? = null,
 ) {
+    /** Where the edits of an attached interface's session go. */
+    interface Owner {
+        fun execute(command: EditCommand, merge: Boolean): Boolean
+        fun seal()
+    }
+
     private val history = EditHistory(initial)
     private val validator = DesignValidator(catalog)
 
@@ -62,12 +73,20 @@ internal class DesignerSession(
     val selected: DesignNode? get() = selectedId?.let { document.node(it) }
 
     fun execute(command: EditCommand, merge: Boolean = true): Boolean {
+        owner?.let { return it.execute(command, merge) }
         val changed = history.execute(command, merge)
         if (changed) publish()
         return changed
     }
 
-    fun seal() = history.seal()
+    fun seal() = owner?.seal() ?: history.seal()
+
+    /** Takes [document] from the owner's history (an edit, undo or redo there), keeping the selection and preview values. */
+    fun follow(document: DesignDocument) {
+        if (document == history.document) return
+        history.reset(document)
+        publishQuiet()
+    }
 
     fun undo(): Boolean = history.undo().also { if (it) publish() }
 
