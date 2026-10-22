@@ -18,6 +18,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.supermonster003.autojs6.plugin.three.block.compose.R
 import io.github.supermonster003.autojs6.plugin.three.block.compose.app.InteractivePreviewSettings
+import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.parse.TsxParserClient
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.preview.UiPreviewClient
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.storage.ProjectStore
 import io.github.supermonster003.autojs6.plugin.three.block.compose.designer.ui.DesignerActivity
@@ -359,6 +360,8 @@ internal class UiInteractiveDeviceTest {
         "    </vertical>\n);\nconsole.log('tsx started');\n"
 
     private fun tsxProject(stem: String, script: String): String {
+        // Without TypeScript Engine the document never opens, so there is no preview client to wait for.
+        assumeTrue("needs TypeScript Engine ${TsxParserClient.MIN_VERSION_NAME}+", TsxParserClient.hasParserService(context))
         val project = store.create("ui-interactive-test-$stem", script, ProjectStore.TSX_EXTENSION)
         created += project.name
         return project.name
