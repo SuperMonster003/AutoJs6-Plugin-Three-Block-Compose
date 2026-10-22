@@ -259,9 +259,21 @@
 
 ### P11.8 compose 联动 (插件, 1.9.0)
 
-- [ ] (插件) `compose.attach` 解析与 `composeAttachments`, 子会话与复合撤销命令, 叠画与点选优先级, Compose 抽屉 / 大纲子树的切换, `ScriptWriter` 写回实参范围 (3.6 节).
-- [ ] (插件, D70) 新建 `<compose>` 容器的入口 (元素面板 / 片段菜单, 与 D66 入口风格一致) 与 `compose.attach(ui.<id>, ...)` 桩 (JS / TSX 各一种, TSX 按 D68), 可撤销, 保存时写回.
-- [ ] (测试) JVM `ComposeAttachmentTest` (解析, 关联, 写回不动点, 不可解析实参的提示, D70 桩生成); 设备 `UiComposeLinkDeviceTest` (含 `<compose>` 与 `compose.attach` 的脚本: 画布在容器边界内画出 Compose 节点, 点选后抽屉显示 Compose 属性, 改 Text 文本后保存只改渲染函数; 交互预览中宿主真实画出 Compose 内容 (API 33+ 与 v2 宿主)).
+- [x] (插件) `compose.attach` 解析与 `composeAttachments`, 子会话与复合撤销命令, 叠画与点选优先级, Compose 抽屉 / 大纲子树的切换, `ScriptWriter` 写回实参范围 (3.6 节).
+- [x] (插件, D70) 新建 `<compose>` 容器的入口 (元素面板 / 片段菜单, 与 D66 入口风格一致) 与 `compose.attach(ui.<id>, ...)` 桩 (JS / TSX 各一种, TSX 按 D68), 可撤销, 保存时写回.
+- [x] (测试) JVM `ComposeAttachmentTest` (解析, 关联, 写回不动点, 不可解析实参的提示, D70 桩生成); 设备 `UiComposeLinkDeviceTest` (含 `<compose>` 与 `compose.attach` 的脚本: 画布在容器边界内画出 Compose 节点, 点选后抽屉显示 Compose 属性, 改 Text 文本后保存只改渲染函数; 交互预览中宿主真实画出 Compose 内容 (API 33+ 与 v2 宿主)).
+
+  证据 (2026-10-22): 插件提交 `0358f66` (实现, 测试与 `.python/run_device_tests.py`). 实现要点:
+  - 读: `UiScriptReader` 在 `"ui"` 脚本的 XML 字面量之间找 `compose.attach(ui.<id>, <实参>)` (也认 `$ui.<id>`; TSX 由 `TsxUiReader` 认 `(ui as any).<id>`), 实参 (渲染函数或直接节点) 按 compose 工程的读法 (`ScriptReader` / `TsxReader`) 读成 `DesignDocument`, 成为独立的 `UiSegment.Compose` 段 (`UiDocument.composeAttachments`, 记实参的源码与行列); 位于 XML 字面量 `{表达式}` 内或另一个实参内的调用留给外层. 容器参数或实参读不出的调用保持原文, 记入 `attachmentProblems`, `UiValidator` 报 "读不出的调用" 与 "没有 id 相同的 `<compose>` 元素" 两类.
+  - 写 (D35): 实参未编辑时原样写回, 编辑过时按其方言的 compose 写法 (`ScriptWriter` / `TsxWriter`) 重写, 续行按调用所在行缩进; 调用的其余部分与脚本其它文字不动. 挂载之外的编辑 (如 state 声明) 被拒绝, 而不是保存时丢失.
+  - 画布: 宿主照常排布空的 `<compose>` 元素, 编辑模式下 `AttachedInterface` 在宿主报告的元素边界内用真实渲染器画出该界面 (从左上角起, 与元素同宽, 裁到边界内), Compose 节点的选择框标签为 `类型 #key`; 点按先取最上层界面中最深的节点, 再取其下的 XML 元素. 交互预览不叠画, 由宿主真实运行 `compose.attach`.
+  - Q26 (已按推荐先行, 待确认): 没有自己高度的 `<compose>` 元素 (未设高度或为包裹内容, 且无 `minHeight`, `XmlPreviewFrames.takesMeasuredHeight`) 在预览请求中带上画布测得的界面高度作为 `minHeight`, 其后的元素随之下移, 与运行中的脚本一致; 保存的脚本不变.
+  - 抽屉: 选中带界面的 `<compose>` 元素或其中的节点时, 抽屉换成 Compose 面板 (检查器在前, 插槽面板与布局的分开), 经 `UiDesignerSession.selectAttachment` 建立的 `DesignerSession` 子会话 (`attachmentSession`, 其 `owner` 把命令包成 `UiEditCommand.EditAttachment`) 编辑, 编辑进入布局的同一撤销历史 (撤销 / 重做换回整个文档, 子会话经 `follow` 跟上并保留选择与预览值); "返回布局" 回到布局面板. 状态标签页可改 `compose.state` 的预览值, 只影响画布, 不写回脚本.
+  - D70: 元素面板新增 "Compose" 分类的 `<compose>` (原生 Android XML 片段中不提供), 一步插入 `<compose id='composeN' w='*'/>` 与 `compose.attach(ui.composeN, function () { return compose.Column(...); });` 桩 (TSX 为 `(ui as any).composeN` 与箭头函数, D68), 桩放在事件桩之后 (D52 的位置), 初始界面为一个 Column 内含 Text "Compose", 插入后直接在抽屉中打开该界面; 布局没有放桩的位置时不插入并提示. 撤销一步还原元素与调用, 只在保存时写入文件. 新字符串 6 个 x 11 目录.
+  - 验证: JVM 307 项 (1 项跳过; 新增 `ComposeAttachmentTest` 10 项: 读出与关联, 未编辑字节不变, 编辑只重写实参且再读相同, 挂载外的编辑被拒且其它容器不变, 读不出的调用与无容器的提示, Q26 的预览请求, JS 新容器与桩的位置, 第二个容器在第一个调用之后且事件桩照常, 无位置时不添加, TSX 的读写与编辑, TSX 新容器用 D68 写法且能被 TSX 样例读回; `TsxUiRoundTripTest` 新增 `tsx/ui/compose.tsx` 样例及其规范形式与树快照), lint 0 错误 15 警告, `prepush_check.py --lint` 6/6, `verifySharedClasspath` 与 `verify_apk_classpath.py` (debug / `--shrunk` release) 通过.
+  - 设备 `UiComposeLinkDeviceTest` 3 项 (模拟器宿主为 P11.H3 的 6.8.0 debug 构建 5456, 小米为 6.8.0 构建 5781): AVD_API_33 (emulator-5584) 3/3, Xiaomi Pad 23046RP50C (968e9f18, API 35) 3/3, AVD_API_35_16K (emulator-5590) 首轮交互项在新装后 30 s 内未等到运行 (另两项通过), 其后强停 / 重装后三轮与等待放宽到 60 s 后一轮均 3/3. 用例: 画布上界面边界与宿主元素边界相差不超过 1 px, 容器高度补到界面高度且其后元素在界面之下; 点 "Panel text" 选中 Text 节点并打开 Compose 抽屉, 改文本后撤销 / 重做, 撤销后脚本与原文相同; 状态预览值改为 Busy 只显示在画布; 保存后只有 `compose.attach` 的实参改变; 元素面板新增容器一步撤销 / 重做, 保存文本与期望一致; 交互预览中宿主画出 Compose 按钮 (画布无叠画), 点按得到控制台 `compose clicked`, 关闭后文件不变.
+  - API 33 回归 (emulator-5584): `UiDesignerDeviceTest` 7, `UiPreviewDeviceTest` 1, `UiInteractiveDeviceTest` 8, `UiLayoutFileDeviceTest` 6, `DesignerDeviceTest` 11, 共 32 项通过 1 项按假设跳过 (v4 宿主上的 "隐藏即停止"). 首轮 `UiInteractiveDeviceTest` 的两项 TSX 用例失败: 只读模拟器重启后没有 TypeScript Engine, 用例在等待解析服务打开文档时超时而不是跳过; 装上 TypeScript Engine 0.7.0 debug 后该类 7 项通过 1 项跳过.
+  - 设备脚本: 新增 `.python/run_device_tests.py` (可选安装宿主 / 插件 / 测试 APK, 按类运行 `am instrument`, 每项一行 PASS / FAIL / SKIP 与失败的首行, 每类与总计各一行).
 
 ### P11.9 1.9.0 文档与发布 (文档 + 发布)
 
@@ -356,3 +368,9 @@ py .python/verify_designer_performance.py --serial <Redmi serial> --apk <debug a
 (a) 下半区 / 右半区分栏, 开关状态按文件记住 (建议); (b) 底部弹层, 不记住; (c) 独立页面 (全屏预览), 从编辑器跳转.
 
 已拍板 (2026-10-22): (a), 见 D71.
+
+### Q26 (P11.8 中): 没有自己高度的 `<compose>` 容器在布局预览中的高度
+
+布局预览不运行 `compose.attach`, 宿主把空的 `<compose>` 元素排成 0 高, 设计器在它上面叠画界面. (a) 未设高度 (或包裹内容) 且无 `minHeight` 的容器在预览请求中带上画布测得的界面高度作为 `minHeight`, 其后的元素随之下移, 与运行中的脚本一致, 保存的脚本不变 (建议, 已先行); (b) 不补, 容器保持 0 高, 叠画的界面盖住其后的元素; (c) 给这类容器一个固定的预览高度 (如 120dp), 与界面实际高度无关.
+
+影响: P11.8 (`XmlPreviewFrames.composeHeights` / `takesMeasuredHeight`, `UiComposeLinkDeviceTest` 的高度断言). 改选返工: 约 1 小时 (去掉或改写回填, 改两项测试).

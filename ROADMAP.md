@@ -1552,3 +1552,11 @@ NavigationBar / NavigationRail / NavigationDrawer / TabRow / ModalBottomSheet / 
 - 宿主本地提交: `fb451f88d` (契约 v5: `runScript` 的 `scriptDialect`, `COMPILE_FAILED`, `tsxRunSupported`, 冻结 v4), `204a33ee5` (TSX 文本先经 TypeScript Engine 编译再在画布中运行, 错误行号换回 TSX 行), `407ba2f24` (测试), `58d7621c2` (zh-Hans changelog). 插件提交: `2086c21` (契约 AAR v5), `09a313e` (TSX UI 工程的交互预览, 编译中 / 编译失败的提示, 4 个新字符串 x 11 目录).
 - 验证: 宿主 JVM 契约 8 项与预览包 29 项, `UiPreviewServiceTest` 21 项在 API 33 / 35 模拟器通过 (API 35 首轮一次 ART JIT 崩溃后两轮全过); 插件 JVM 293 项, lint 0 错误, API 33 上交互预览 / TSX / UI 设计器 / 布局预览 / 布局文件设备测试 27 项无失败, API 35 上一项旧 TSX 解析用例首轮超时, 复跑通过. 逐项证据见 P11 路线图 P11.H3 (已全部勾选).
 - 下一步: P11.8 (compose 联动), 然后 P11.9 (1.9.0 文档, changelog, gate 与发布).
+
+### 2026-10-22: P11.8 compose 联动
+
+- 维护者决策 D70 - D72 (Q24, Q25, Q22) 已记入 P11 路线图并推送 (`0e49b57`); 本阶段按 D70 加入新建 `<compose>` 容器的入口.
+- 插件提交: `0358f66` (`compose.attach` 的读写与 `UiDocument.composeAttachments`, 画布在宿主报告的容器边界内叠画与点选, Compose 抽屉的子会话与布局的同一撤销历史, 保存时只重写实参 (D35), D70 新容器与 JS / TSX 桩, 6 个新字符串 x 11 目录, `ComposeAttachmentTest`, `UiComposeLinkDeviceTest`, `.python/run_device_tests.py`).
+- 验证: JVM 307 项 (1 项跳过), lint 0 错误; `UiComposeLinkDeviceTest` 在 AVD_API_33, AVD_API_35_16K 与 Xiaomi Pad (API 35) 上各 3/3 (API 35 模拟器首轮交互项在新装后超时, 复跑与放宽等待后通过); API 33 上 UI 设计器 / 布局预览 / 交互预览 / 布局文件 / 设计器设备测试 32 项通过 1 项跳过. 逐项证据见 P11 路线图 P11.8 (已全部勾选).
+- 待决: Q26 (没有自己高度的 `<compose>` 容器在布局预览中以界面高度作为 `minHeight`) 已按建议先行, 见 P11 路线图附录 D.
+- 下一步: P11.9 (1.9.0 文档, changelog, gate 与发布); P11.10 (宿主编辑器内布局预览面板) 由宿主会话进行.
