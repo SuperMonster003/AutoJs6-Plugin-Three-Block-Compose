@@ -5,6 +5,33 @@
   "changelog_label_improvement": "Improvement",
   "changelog_label_dependency": "Dependency",
   "$data": {
+    "v1.9.0": {
+      "released_date": "2026/10/22",
+      "hint": [
+        "Several 1.9.0 features need a newer AutoJs6 6.8.0 build: dialogs, the back key, pause and resume, status bar colors and the busy main thread limit in the interactive preview need host commit 2d7944d10 or later (preview contract v4), and running TSX scripts in the interactive preview needs host commit 204a33ee5 or later (preview contract v5) with TypeScript Engine 0.7.0 or later installed. With an older AutoJs6 these features do not appear and the interactive preview works as in 1.8.0 (hiding the designer stops the script and coming back runs it again); TSX UI projects can be tried in AutoJs6 with \"Run\"",
+        "Editing UI layouts in TSX scripts needs TypeScript Engine 0.7.0 or later; without it such projects open as read-only source"
+      ],
+      "feature": [
+        "The interactive preview is closer to a real run: dialogs the script opens show inside the canvas and can be tapped; a new \"Back key\" button above the canvas goes to the open dialog first, then to the script's back_pressed event, and ends the run if neither handles it; hiding the designer sends the script pause and it keeps running, and coming back sends resume instead of running it again; status bar and navigation bar colors set by the script show as bars at the top and bottom of the canvas",
+        "New \"Busy main thread limit\" in the \"Designer\" group of the settings page (1 - 60 s, 5 s by default): when a script in the interactive preview keeps AutoJs6's main thread busy longer than this (an endless loop, say), AutoJs6 stops it and its line shows above the canvas and in the console, so the designer never freezes",
+        "UI layouts in TSX scripts: the JSX layouts in ui.layout(...) or ui.inflate(...) of a .tsx script that starts with \"ui\"; can be edited on the canvas, with the same palette, property drawer and problems tab as JS UI projects; layouts that are not edited stay as they are, edited ones are rewritten in one consistent format; a new UI project can put its layout \"In a TSX script\"",
+        "Event stubs in TSX layouts are written so that TypeScript compiles them: a click becomes onClick={() => { ... }} on the element, other events add (ui as any).<id>.on(...); TSX UI projects still go to AutoJs6 as .tsx files to run or export",
+        "TSX UI projects work in the interactive preview too: AutoJs6 compiles the script with TypeScript Engine first, and the canvas says so meanwhile; when compiling fails, the first error shows above the canvas with its line, and a tap lists every error in the console; the lines of errors during the run are lines of the TSX text",
+        "Compose interfaces in UI projects can be edited directly: an interface attached to a <compose> container with compose.attach(ui.<id>, ...) is drawn on the canvas where the container is, and its nodes can be selected; the drawer then switches to the Compose panels (properties, slots and state), \"Back to the layout\" returns to the layout panels, and the State tab changes preview values of compose.state; these edits share the layout's undo history, and saving rewrites only the second argument of compose.attach and leaves the rest of the script as it was",
+        "New \"Compose\" category in the palette: one step adds a <compose> container and its compose.attach call (in a form TypeScript compiles, in TSX scripts), starting with a Column that holds a text, and opens it for editing; it can be undone and goes into the file only when saved"
+      ],
+      "fix": [
+        "In Arabic, \"3-Block Compose\" in the titles of the designer home and the gallery and in texts no longer shows as \"Block Compose-3\"",
+        "In Arabic, code in the gallery examples and in the designer's source view, consoles, outline and property fields is now laid out left to right, so semicolons no longer jump to the start of lines and long lines are no longer cut off"
+      ],
+      "improvement": [
+        "\"Preview differences\" follow what the installed AutoJs6 supports: with an AutoJs6 that has preview contract v4, dialogs, status bar colors, lifecycle events and endless loops on the main thread are no longer listed, and the note on ui.emitter now says the preview only receives create, resume, pause and back_pressed",
+        "A <compose> container without a height of its own takes the height of its interface in the layout preview, and the elements below it move down as in a real run"
+      ],
+      "dependency": [
+        "Upgrade the ui-preview-api.aar contract artifact to ui preview contract v5 (v4 adds dialogs, lifecycle events, window colors and the busy main thread limit, v5 adds TSX runs and compile errors; AutoJs6 builds with v3 or older keep the earlier previews)"
+      ]
+    },
     "v1.8.0": {
       "released_date": "2026/10/16",
       "hint": [
