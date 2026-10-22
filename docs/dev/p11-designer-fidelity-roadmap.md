@@ -36,6 +36,7 @@
 | D70 compose 联动的编辑范围 (2026-10-22, Q24 选 (b)) | 除编辑 `compose.attach` 的渲染函数节点树 (3.6 节) 外, 还允许在 XML 工程里新建 `<compose>` 容器并生成 `compose.attach(ui.<id>, ...)` 桩 (JS 与 TSX 各一种写法, TSX 按 D68 的类型要求), 作为可撤销的编辑, 保存时才写回 (与 D66 的桩一致); 不做 XML 元素转 Compose 节点 |
 | D71 宿主编辑器面板 (2026-10-22, Q25 选 (a)) | 宿主编辑器的预览面板为分栏 (竖屏下半区 / 横屏右半区), "预览" 开关状态按文件记住; 由 P11.10 宿主子会话实施 |
 | D72 复核线重定基线 (2026-10-22, Q22 选 (a)) | 复核线超线且维护者接受后, 以当次 release 的 Redmi 采样为新基线 (与 1.5.0 做法一致); P11.9 执行 |
+| D73 无自身高度的 `<compose>` 容器的预览高度 (2026-10-22, Q26 选 (a)) | 布局预览不运行 `compose.attach`; 未设高度 (或包裹内容) 且无 `minHeight` 的 `<compose>` 容器在预览请求中以画布测得的界面高度作为 `minHeight`, 其后的元素随之下移, 与运行中的脚本一致, 保存的脚本不变 (P11.8 已按此实施, `XmlPreviewFrames.composeHeights` / `takesMeasuredHeight`) |
 
 ---
 
@@ -267,7 +268,7 @@
   - 读: `UiScriptReader` 在 `"ui"` 脚本的 XML 字面量之间找 `compose.attach(ui.<id>, <实参>)` (也认 `$ui.<id>`; TSX 由 `TsxUiReader` 认 `(ui as any).<id>`), 实参 (渲染函数或直接节点) 按 compose 工程的读法 (`ScriptReader` / `TsxReader`) 读成 `DesignDocument`, 成为独立的 `UiSegment.Compose` 段 (`UiDocument.composeAttachments`, 记实参的源码与行列); 位于 XML 字面量 `{表达式}` 内或另一个实参内的调用留给外层. 容器参数或实参读不出的调用保持原文, 记入 `attachmentProblems`, `UiValidator` 报 "读不出的调用" 与 "没有 id 相同的 `<compose>` 元素" 两类.
   - 写 (D35): 实参未编辑时原样写回, 编辑过时按其方言的 compose 写法 (`ScriptWriter` / `TsxWriter`) 重写, 续行按调用所在行缩进; 调用的其余部分与脚本其它文字不动. 挂载之外的编辑 (如 state 声明) 被拒绝, 而不是保存时丢失.
   - 画布: 宿主照常排布空的 `<compose>` 元素, 编辑模式下 `AttachedInterface` 在宿主报告的元素边界内用真实渲染器画出该界面 (从左上角起, 与元素同宽, 裁到边界内), Compose 节点的选择框标签为 `类型 #key`; 点按先取最上层界面中最深的节点, 再取其下的 XML 元素. 交互预览不叠画, 由宿主真实运行 `compose.attach`.
-  - Q26 (已按推荐先行, 待确认): 没有自己高度的 `<compose>` 元素 (未设高度或为包裹内容, 且无 `minHeight`, `XmlPreviewFrames.takesMeasuredHeight`) 在预览请求中带上画布测得的界面高度作为 `minHeight`, 其后的元素随之下移, 与运行中的脚本一致; 保存的脚本不变.
+  - Q26 (D73, 2026-10-22 拍板 (a)): 没有自己高度的 `<compose>` 元素 (未设高度或为包裹内容, 且无 `minHeight`, `XmlPreviewFrames.takesMeasuredHeight`) 在预览请求中带上画布测得的界面高度作为 `minHeight`, 其后的元素随之下移, 与运行中的脚本一致; 保存的脚本不变.
   - 抽屉: 选中带界面的 `<compose>` 元素或其中的节点时, 抽屉换成 Compose 面板 (检查器在前, 插槽面板与布局的分开), 经 `UiDesignerSession.selectAttachment` 建立的 `DesignerSession` 子会话 (`attachmentSession`, 其 `owner` 把命令包成 `UiEditCommand.EditAttachment`) 编辑, 编辑进入布局的同一撤销历史 (撤销 / 重做换回整个文档, 子会话经 `follow` 跟上并保留选择与预览值); "返回布局" 回到布局面板. 状态标签页可改 `compose.state` 的预览值, 只影响画布, 不写回脚本.
   - D70: 元素面板新增 "Compose" 分类的 `<compose>` (原生 Android XML 片段中不提供), 一步插入 `<compose id='composeN' w='*'/>` 与 `compose.attach(ui.composeN, function () { return compose.Column(...); });` 桩 (TSX 为 `(ui as any).composeN` 与箭头函数, D68), 桩放在事件桩之后 (D52 的位置), 初始界面为一个 Column 内含 Text "Compose", 插入后直接在抽屉中打开该界面; 布局没有放桩的位置时不插入并提示. 撤销一步还原元素与调用, 只在保存时写入文件. 新字符串 6 个 x 11 目录.
   - 验证: JVM 307 项 (1 项跳过; 新增 `ComposeAttachmentTest` 10 项: 读出与关联, 未编辑字节不变, 编辑只重写实参且再读相同, 挂载外的编辑被拒且其它容器不变, 读不出的调用与无容器的提示, Q26 的预览请求, JS 新容器与桩的位置, 第二个容器在第一个调用之后且事件桩照常, 无位置时不添加, TSX 的读写与编辑, TSX 新容器用 D68 写法且能被 TSX 样例读回; `TsxUiRoundTripTest` 新增 `tsx/ui/compose.tsx` 样例及其规范形式与树快照), lint 0 错误 15 警告, `prepush_check.py --lint` 6/6, `verifySharedClasspath` 与 `verify_apk_classpath.py` (debug / `--shrunk` release) 通过.
@@ -374,3 +375,5 @@ py .python/verify_designer_performance.py --serial <Redmi serial> --apk <debug a
 布局预览不运行 `compose.attach`, 宿主把空的 `<compose>` 元素排成 0 高, 设计器在它上面叠画界面. (a) 未设高度 (或包裹内容) 且无 `minHeight` 的容器在预览请求中带上画布测得的界面高度作为 `minHeight`, 其后的元素随之下移, 与运行中的脚本一致, 保存的脚本不变 (建议, 已先行); (b) 不补, 容器保持 0 高, 叠画的界面盖住其后的元素; (c) 给这类容器一个固定的预览高度 (如 120dp), 与界面实际高度无关.
 
 影响: P11.8 (`XmlPreviewFrames.composeHeights` / `takesMeasuredHeight`, `UiComposeLinkDeviceTest` 的高度断言). 改选返工: 约 1 小时 (去掉或改写回填, 改两项测试).
+
+已拍板 (2026-10-22): (a), 见 D73.
