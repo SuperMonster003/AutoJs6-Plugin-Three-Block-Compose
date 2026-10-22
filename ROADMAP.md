@@ -1567,4 +1567,5 @@ NavigationBar / NavigationRail / NavigationDrawer / TabRow / ModalBottomSheet / 
 - 文档站 `5c18245` / `1c3e978` / `644d273` 与 Offline Docs `8ad6797` 已推送; 插件 `ba26466` (changelog / README 1.9.0 10 语言, 版本 1.9.0 / build 219), `b225be6` (`run_device_tests.py --all`), `556a6b5` (交给宿主运行的用例改从 `Android/media` 读标记, API 30 镜像的 shell 读不到 `Android/data`).
 - 验证: gate (build 219) 与 Redmi 设计器性能复核线 16 项全部通过; 全套 instrumentation 148 项在 API 24 / 30 / 33 / 35 模拟器上除两项外通过 (API 30 的一项由 `556a6b5` 修复后复跑通过, API 35 的一项为模拟器 ART 原生崩溃, 复跑通过). 逐项证据见 P11 路线图 P11.9.
 - 本提交把 `VERSION_BUILD` 设回 219, 与 release 包一致 (官方索引从 tag 的 `version.properties` 读 versionCode; 其后两笔只改测试的提交曾升到 220 / 221, 未发布), 下一笔提交恢复为提交数 + 1.
-- 下一步: 推送插件与 tag `v1.9.0`, GitHub Release, 官方索引准入.
+- 发布 (同日): tag `v1.9.0` = `6b17b21`; GitHub Release `v1.9.0` (APK 6093058 B, SHA-256 `cbdc53ad...23ea`); 官方索引 `b2a9bb2` 准入 (manifest 219; GitHub API 偶发返回空 releases 列表, 生成器经仓库外的重试包装运行). 插件 CI 在 master 上全部通过, tag 上 API 35 作业的 3 项已知超时重跑后通过. 逐项见 P11 路线图 P11.9 (已全部勾选).
+- 下一步: P11.11 (2.0.0 文档与发布, 编辑器预览面板; 宿主发布配合与真机矩阵), 开始前按路线图核对其前置.
