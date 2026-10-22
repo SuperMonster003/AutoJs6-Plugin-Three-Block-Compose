@@ -144,8 +144,10 @@ internal class UiLayoutFileDeviceTest {
         assumeTrue("the host has no project zip entries", ScriptLauncher.hostTakesProjects(context))
         val stamp = System.currentTimeMillis().toString()
         val marker = "designer-handoff-$stamp.txt"
-        // A plain (non-ui) script: it reads a file of its project and writes the marker into the host's own files.
-        val script = "files.write(context.getExternalFilesDir(null) + '/$marker', 'ran ' + files.read('./data.txt'));\n"
+        // A plain (non-ui) script: it reads a file of its project and writes the marker into the host's own media
+        // directory, which needs no permission and which the shell reads on every release (the API 30 image hides
+        // Android/data from the shell).
+        val script = "files.write(context.getExternalMediaDirs()[0] + '/$marker', 'ran ' + files.read('./data.txt'));\n"
         val project = store.createFolder(PREFIX + "handoff-$stamp", script, mapOf("data.xml" to "<frame/>\n"))
         File(store.projectDir(project.name), "data.txt").writeText("from the project")
         val zip = assertNotNullAndGet(io.handoffArchive(DocumentSource.Local(project.name), script, emptyMap()))
@@ -153,7 +155,7 @@ internal class UiLayoutFileDeviceTest {
         context.contentResolver.openInputStream(uri)!!.use { assertTrue(it.read() >= 0) }
 
         assertEquals(ScriptLauncher.Result.STARTED, ScriptLauncher.start(context, ScriptLauncher.runProjectIntent(uri)))
-        val markerPath = "/sdcard/Android/data/${ThreeBlockComposePlugin.HOST_PACKAGE_NAME}/files/$marker"
+        val markerPath = "/sdcard/Android/media/${ThreeBlockComposePlugin.HOST_PACKAGE_NAME}/$marker"
         val deadline = System.currentTimeMillis() + 20_000
         var text = ""
         while (System.currentTimeMillis() < deadline) {
