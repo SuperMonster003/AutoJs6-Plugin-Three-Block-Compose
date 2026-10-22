@@ -286,8 +286,20 @@
 
 ### P11.10 宿主编辑器内布局预览面板 (宿主, 本地 master)
 
-- [ ] (宿主) 编辑器 "预览" 开关与面板 (3.7 节): 进程内预览视图, 缓冲区解析, 400 ms 刷新, 点元素跳行, 失败说明, "在 3-Block Compose 设计器中打开" 入口; 横竖屏布局.
-- [ ] (测试) 宿主 `EditorUiPreviewDeviceTest` (打开 ui 示例 -> 开预览 -> 面板出现元素 -> 改一行 -> 面板刷新 -> 点元素光标到行), API 24 / 30 / 33 模拟器.
+- [x] (宿主) 编辑器 "预览" 开关与面板 (3.7 节): 进程内预览视图, 缓冲区解析, 400 ms 刷新, 点元素跳行, 失败说明, "在 3-Block Compose 设计器中打开" 入口; 横竖屏布局.
+- [x] (测试) 宿主 `EditorUiPreviewDeviceTest` (打开 ui 示例 -> 开预览 -> 面板出现元素 -> 改一行 -> 面板刷新 -> 点元素光标到行), API 24 / 30 / 33 模拟器.
+
+  证据 (2026-10-22): 宿主本地提交 `61f6c3850` (实现, 测试, zh-Hans changelog 一条与 `tools/ui-preview/run_editor_ui_preview_test.py`; 未推送, D7). 实现要点:
+  - 开关与面板 (D71): 普通工具栏新增 "预览" 项, 只对首个指令为 `"ui"` 的 JS 脚本显示 (Node.js / Bun / QuickJS 与 TSX 不显示); `editor_container` 外包一层分栏, 竖屏下半区 / 横屏右半区, 旋转不重建 Activity, 只切方向, 会话与开关保留. 面板右上角的 "在 3-Block Compose 设计器中打开" 只在 `isThreeBlockComposeDesignerAvailable()` 为真时显示, 点击走 `openInThreeBlockComposeDesigner()`.
+  - 预览: `UiPreviewSession` 新增宿主内部的 attached 模式 (不在契约 `MODES` 里, 服务端无法请求), 根容器直接挂进面板, 复用 `applyLayout` / 元素跟踪 / 高亮 / 点按命中; 回调是进程内的 `IUiPreviewCallback.Stub` 对象直接调用, 不经服务与 Binder.
+  - 排布尺寸 (D74): 会话按编辑器窗口尺寸排布, 根容器以固定尺寸挂进面板, 轴心 (0, 0) 等比缩放 min(面板宽 / 窗口宽, 面板高 / 窗口高) 并居中; 窗口尺寸变化 (旋转, 多窗口) 时会话 `resize` 并重算比例, 面板尺寸变化只重算比例. 点按由 ViewGroup 的逆变换换算到布局坐标, 命中与高亮沿用布局坐标, 高亮框线宽按比例补偿 (下限 0.25), 屏幕上仍为 2dp.
+  - 解析与刷新: `UiPreviewSourceReader` 用宿主 Rhino Parser (ES6, IDE 模式) 解析当前缓冲区, 取最靠前的 `ui.layout` 调用 (参数为 XML 字面量, 或只用一个 XML 字面量初始化且未被重新赋值的变量), E4X `{expr}` 转为 `{{expr}}`, 顶层 `var` / `let` / `const` 的字面量初始化作为绑定上下文, `ui.useAndroidLayout(true / false)` 透传. 停止输入 400 ms 后在后台线程解析, 代次号丢弃过期结果.
+  - 不运行脚本 (D76): 绑定只在 `UiPreviewBindingSandbox` (带父 VarScope, 否则宿主 `Context.toObject` 对每个属性报 "Scriptable scope has no parent VarScope") 中求值, 名称只解析到上述字面量声明与少量纯标准全局; 表达式先经 `UiPreviewBindingGuard` 白名单, 未通过的保留原文并在面板提示.
+  - 点元素与失败: 元素先序号 -> 生成 XML 中的开始标签偏移 -> 源码行列, `editor.jumpTo` 并高亮; 语法错误 / 没有 `ui.layout` / 参数不支持 / 布局失败 (映射回源码行) 在面板内说明, 保留上一次成功的画面.
+  - 按文件记住 (D75): `MiscStateKeys.EDITOR_UI_PREVIEW_FILES` (`key_$_editor_ui_preview_files`, 最近的在前, 上限 100), 分类 other.
+  - 宿主既有回归 (随本提交修复): Android 11+ 先分发旋转的 insets 再按新尺寸布局, `EditorView` 用旧的竖屏几何算出 1320 px 的 "键盘" 重叠, 横屏编辑区高度为 0 (不开预览也一样); 宽度变化时再请求一次 insets 后恢复. 引入于 6.8.0 开发期 (晚于 alpha5), 不单列 changelog.
+  - 验证: JVM 58 项通过 (`UiPreviewSourceReaderTest` 7, `UiPreviewBindingGuardTest` 3, `UiPreviewFailuresTest` 6, `UiPreviewRequestsTest` 15, `UiPreviewBoundsTest` 4, `UiPreviewArchiveTest` 5, `MiscStateKeysTest` 10, `SettingsRegistryGuardTest` 8), `:app:assembleAppDebug` 通过.
+  - 设备 `EditorUiPreviewDeviceTest` 2 项 (只读模拟器实例): AVD_API_24 (emulator-5640, x86) 2/2, 缩放比例竖屏 0.298 / 横屏 0.466; AVD_API_30 (emulator-5642) 2/2, 0.338 / 0.473; AVD_API_33 (emulator-5644) 2/2, 0.338 / 0.431. 用例: 开预览后面板出现元素; 根容器尺寸等于窗口, 等比缩放且居中 (D74 补的一项); 改一行后刷新; 点缩小后的元素光标到其行; 横屏面板在右半区且编辑区保持高度, 回竖屏回到下半区; 布局出错时按行说明并保留上一次画面, 修好后说明消失; 重新打开文件预览自动恢复, 关掉后不再记住; 非 ui 脚本不显示开关, 输入 `"ui"` 指令后出现.
 
 ### P11.11 2.0.0 文档与发布 (文档 + 发布)
 
