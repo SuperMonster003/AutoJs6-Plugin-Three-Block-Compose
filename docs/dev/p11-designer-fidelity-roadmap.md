@@ -281,8 +281,15 @@
 
 ### P11.9 1.9.0 文档与发布 (文档 + 发布)
 
-- [ ] (文档) 文档站: "缩小的差异" 表 (v3 宿主与旧宿主各一列), "TSX 的 UI 工程", "<compose> 容器的联动编辑"; README / changelog `v1.9.0` 10 语言 (写明所需宿主提交); `AGENTS.md` 修订.
+- [x] (文档) 文档站: "缩小的差异" 表 (v3 宿主与旧宿主各一列), "TSX 的 UI 工程", "<compose> 容器的联动编辑"; README / changelog `v1.9.0` 10 语言 (写明所需宿主提交); `AGENTS.md` 修订.
 - [ ] (发布) 1.9.0 本地 gate, 推送 / Release / 索引; 宿主 ui 回归 (v3 宿主在 API 24 / 30 / 33 / 35 模拟器).
+
+  证据 (2026-10-22):
+  - 文档: 文档站 `5c18245` (`api/composeDesigner.md` 新节 "交互预览的新能力 (1.9.0)", "TSX 的 UI 工程 (1.9.0)" (含 "在交互预览中运行 TSX") 与 "`<compose>` 容器的联动编辑 (1.9.0)"; "预览差异" 表按宿主分列: 契约 v2 / v3 的旧宿主一列, 契约 v4 及以上的宿主一列 (条目中的 "v3 宿主" 是实施前的编号, 即新契约宿主); 生成的 HTML / JSON / 搜索索引), `1c3e978` (`project.json` 修订 167), `644d273` (Markdown 测试的译文链接用例改为在全部版本中挑选带文档链接的 changelog 条目, 原先固定取最新版本的第一条, 本次最新版本的第一条没有链接); 维护者 2026-10-22 决定 "全部推送", 三个提交已推送 (工作区中另一会话未提交的 `api/flow.md` 未动). Offline Docs `8ad6797` (同步 `5c18245` 的设计器页与搜索索引, 10 语言 changelog 在 v6.8.40 下加设计器 1.9.0 一条, README, 来源记录两处, build 205) 已推送. 插件 `ba26466` (changelog `v1.9.0` 10 语言: 2 提示 6 新增 2 修复 2 优化 1 依赖, 写明契约 v4 / v5 所需的宿主提交 `2d7944d10` / `204a33ee5` 与 TypeScript Engine 0.7.0; README 状态 / 功能 / 兼容性与插件说明 10 语言; `VERSION_NAME` 1.9.0, build 219); `AGENTS.md` (本地, 被 Git 忽略) 第 12 节 (P11.8 compose 联动), 13.1 节 (`ComposeAttachmentTest`), 13.2 节 (TSX 交互用例的前提, `UiComposeLinkDeviceTest`, `run_device_tests.py --all`, P11.3 交接标记的位置), 14 节 (1.9.0 文件名与 `--all`); 复核线表未变.
+  - 1.9.0 本地 gate (build 219, 源码即 `ba26466`; 其后 `b225be6` / `556a6b5` 只改设备脚本与 androidTest, `app/src/main` 与 gate 相同): markdown / icon `--check`; JVM 307 (1 项跳过); debug / androidTest / lint (0 错误, 15 警告) / release / verifySharedClasspath; classpath debug 与 release `--shrunk` (unresolved 0); release 带摘要包 `autojs6-plugin-three-block-compose-v1.9.0-820b9d5e.apk` 6093058 B (SHA-256 `cbdc53ad...23ea`), DEX 方法引用 99947, 均在复核线 6177215 B / 105804 内; `.python/tests` 通过.
+  - 宿主 ui 回归 (全套 instrumentation 148 项, `run_device_tests.py --all`, 只读模拟器实例; 宿主为 P11.H3 的契约 v5 debug 构建 5456, API 24 为已装的 6.8.0 debug 5835 (装 5456 会被判降级)): AVD_API_33 137 通过 11 跳过; AVD_API_24 127 通过 21 跳过; AVD_API_30 130 通过 17 跳过 1 失败, AVD_API_35_16K 136 通过 11 跳过 1 失败. API 30 的失败是 `UiLayoutFileDeviceTest` 的交给宿主运行: 宿主确实运行了脚本, 但该镜像的 shell 读不到 `/sdcard/Android/data`, 用例读不到标记; `556a6b5` 把标记改写到宿主的 `Android/media/<包名>/`, 该类在 API 24 / 30 / 33 / 35 复跑均 6/6. API 35 的失败是 `GalleryDeviceTest` 一项遇到模拟器的 ART 原生崩溃 (JIT 代码 / HeapTaskDaemon 中的 SIGSEGV, 与 P11.H3 证据中的同类), 该项复跑 7 次通过 6 次, 整类复跑 4/4 且无崩溃, 未改代码. 跳过项为按假设跳过 (Android 版本, 宿主能力, 设备未装 TypeScript Engine 等).
+  - release 包: API 24 `verify_standalone_launch` (`ui_preview=snapshot`, 沙箱按 API 跳过) 与 `verify_host_handoff` 通过; API 33 `verify_standalone_launch` (`sandbox=ran`, `ui_preview=frame`), `verify_designer_recovery --kind all` (compose / ui / folder 三类均恢复) 与 `verify_host_handoff` 通过.
+  - 设计器性能复核线 (Redmi 22120RN86C, API 33, debug build 219): 16 项全部在线内 (例: 画廊读取 p90 37.7 / 65 ms, 打开最大示例 809.8 / 1000 ms, 打开 251 节点文档 813.2 / 1200 ms, 撤销恢复一行 353.4 / 570 ms, 重做主线程 CPU 412.1 / 640 ms), 记录于 `docs/dev/p8-designer-performance.md`, 之后装回 1.9.0 release 并移除测试包 (该机宿主 5835 未动).
 
 ### P11.10 宿主编辑器内布局预览面板 (宿主, 本地 master)
 

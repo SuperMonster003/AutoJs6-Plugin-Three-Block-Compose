@@ -1560,3 +1560,11 @@ NavigationBar / NavigationRail / NavigationDrawer / TabRow / ModalBottomSheet / 
 - 验证: JVM 307 项 (1 项跳过), lint 0 错误; `UiComposeLinkDeviceTest` 在 AVD_API_33, AVD_API_35_16K 与 Xiaomi Pad (API 35) 上各 3/3 (API 35 模拟器首轮交互项在新装后超时, 复跑与放宽等待后通过); API 33 上 UI 设计器 / 布局预览 / 交互预览 / 布局文件 / 设计器设备测试 32 项通过 1 项跳过. 逐项证据见 P11 路线图 P11.8 (已全部勾选).
 - 待决: Q26 (没有自己高度的 `<compose>` 容器在布局预览中以界面高度作为 `minHeight`) 已按建议先行, 见 P11 路线图附录 D.
 - 下一步: P11.9 (1.9.0 文档, changelog, gate 与发布); P11.10 (宿主编辑器内布局预览面板) 由宿主会话进行.
+
+### 2026-10-22 (续): P11.9 1.9.0 文档与发布
+
+- 维护者在本阶段决定: 文档站与 Offline Docs "全部推送".
+- 文档站 `5c18245` / `1c3e978` / `644d273` 与 Offline Docs `8ad6797` 已推送; 插件 `ba26466` (changelog / README 1.9.0 10 语言, 版本 1.9.0 / build 219), `b225be6` (`run_device_tests.py --all`), `556a6b5` (交给宿主运行的用例改从 `Android/media` 读标记, API 30 镜像的 shell 读不到 `Android/data`).
+- 验证: gate (build 219) 与 Redmi 设计器性能复核线 16 项全部通过; 全套 instrumentation 148 项在 API 24 / 30 / 33 / 35 模拟器上除两项外通过 (API 30 的一项由 `556a6b5` 修复后复跑通过, API 35 的一项为模拟器 ART 原生崩溃, 复跑通过). 逐项证据见 P11 路线图 P11.9.
+- 本提交把 `VERSION_BUILD` 设回 219, 与 release 包一致 (官方索引从 tag 的 `version.properties` 读 versionCode; 其后两笔只改测试的提交曾升到 220 / 221, 未发布), 下一笔提交恢复为提交数 + 1.
+- 下一步: 推送插件与 tag `v1.9.0`, GitHub Release, 官方索引准入.
