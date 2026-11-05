@@ -279,3 +279,26 @@ Appended by `.python/verify_designer_performance.py`; review before committing.
 | Undo: main thread CPU | 320.8 / 414.2 | 630 ms |
 | Redo: call to end of first frame | 267.3 / 345.9 | 555 ms |
 | Redo: main thread CPU | 310.3 / 412.1 | 640 ms |
+
+## Round 2026-11-05 (22120RN86C, API 33, build 224, judged)
+
+Appended by `.python/verify_designer_performance.py`; review before committing.
+
+| Measurement | p50 / p90 (ms) | Review line |
+| --- | --- | --- |
+| Gallery read (56 scripts) | 36.1 / 41.1 | 65 ms |
+| Gallery validate | 13.1 / 14.8 | 25 ms |
+| Gallery preview frame | 21.2 / 23.8 | 35 ms |
+| Gallery write | 14.7 / 16.3 | 25 ms |
+| Large read (251 nodes) | 6.1 / 7.4 | 15 ms |
+| Large validate | 5.3 / 5.8 | 10 ms |
+| Large preview frame | 8.3 / 8.4 | 15 ms |
+| Large write | 4.3 / 4.4 | 10 ms |
+| Open NavigationBar example | 573.0 / 702.2 | 1000 ms |
+| Open 251-node document | 760.0 / 774.6 | 1200 ms |
+| Undo restores a row (visibility) | 333.7 / 376.4 | 570 ms |
+| Redo removes a row (visibility) | 320.8 / 371.9 | 540 ms |
+| Undo: call to end of first frame | 295.5 / 365.6 | 560 ms |
+| Undo: main thread CPU | 310.2 / 410.0 | 630 ms |
+| Redo: call to end of first frame | 256.9 / 333.4 | 555 ms |
+| Redo: main thread CPU | 301.5 / 387.7 | 640 ms |

@@ -1575,3 +1575,11 @@ NavigationBar / NavigationRail / NavigationDrawer / TabRow / ModalBottomSheet / 
 - 前置: 宿主 6.8.0 已于 2026-11-03 公开 (tag `v6.8.0`), 维护者决策 D77 (Q33) / D78 (Q34) 记入 P11 路线图决策表与附录 D.
 - 文档: 文档站 `edce34a` / `f611dcd` 与 Offline Docs `ba3a23e` / `ba29102` (本地, 推送前问维护者); 插件 README / changelog `v2.0.0` 10 语言, `VERSION_NAME` 2.0.0 (本提交); 宿主 changelog 的编辑器预览条目已随 6.8.0 发布, 未改宿主. P11 路线图 P11.11 (文档) 已勾选.
 - 下一步: 2.0.0 本地 gate (含 Redmi 复核线), 推送 / tag / Release / 官方索引, D78 的真机矩阵与只读 AVD_API_33 上的公开宿主复核, 然后勾选 P11.11 (发布).
+
+### 2026-11-05 (续): P11.11 2.0.0 gate 与真机复核
+
+- 维护者在本阶段决定: 文档站与 Offline Docs "全部推送" (已推送); Xiaomi Pad 的 adb `error: closed` 由维护者处理后再测; Redmi 被另一会话占用期间等待其空闲, 不改测量方法.
+- 插件 `37ec215` (`verify_editor_preview.py`: 在任意已装 AutoJs6 上走编辑器 "预览" 面板到设计器), 其 CI 三个工作流通过.
+- 验证: gate (build 224) 与 Redmi 设计器性能复核线 16 项全部通过; 只读 AVD_API_33 换装公开 `v6.8.0` 宿主 6640 后全套 instrumentation 148 项 141 通过 7 跳过 0 失败, release 包的启动 / 恢复 / "更多" 交接 / 编辑器预览面板均通过. 逐项证据见 P11 路线图 P11.11.
+- 本提交把 `VERSION_BUILD` 设回 224, 与 release 包一致 (官方索引从 tag 的 `version.properties` 读 versionCode; `37ec215` 只加设备脚本, 曾升到 225, 未发布), 下一笔提交恢复为提交数 + 1.
+- 下一步: 推送插件与 tag `v2.0.0`, GitHub Release, 官方索引准入, 其余真机矩阵 (Redmi / Xiaomi Pad).
