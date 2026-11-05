@@ -14,14 +14,17 @@ then runs, in order:
 
 Afterwards it installs the release APK again (`-r -d`, the debug build carries the same build number) and
 removes the test package, so the phone ends with the released plugin. It never grants storage access: the host
-on the phone must already be able to write /sdcard/Download and its scripts directory. Output keeps one line per
+on the phone must already be able to write /sdcard/Download and its scripts directory. Labels are matched in the
+language the device shows: pass the host's and the plugin's strings.xml for that language (for a zh-CN device,
+`values-zh` of both; the plugin's defaults to English). Output keeps one line per
 step (PASS / FAIL with the key values) and the class summaries; the exit code is 0 when every step passed.
 
 usage: verify_release_on_device.py --serial <serial> --apk <release apk> --debug-apk <debug apk>
                                    --test-apk <androidTest apk> --host-strings <AutoJs6 values/strings.xml>
-                                   [--class <simple name> ...] [--skip-tests]
+                                   [--strings <plugin values/strings.xml>] [--class <simple name> ...] [--skip-tests]
 """
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -71,7 +74,9 @@ def host_to_front(adb: launch.Adb) -> None:
 
 
 def step(name: str, command: list[str], ok_marker: str | None) -> bool:
-    result = subprocess.run([sys.executable, *command], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    # The child scripts print host labels (Chinese on a zh host); have them write UTF-8 whatever the console uses.
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    result = subprocess.run([sys.executable, *command], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     output = (result.stdout + result.stderr).strip()
     if ok_marker is not None:
         line = next((line for line in output.splitlines() if line.startswith(ok_marker)), "")
@@ -93,9 +98,12 @@ def main() -> int:
     parser.add_argument("--debug-apk", type=Path, required=True)
     parser.add_argument("--test-apk", type=Path, required=True)
     parser.add_argument("--host-strings", type=Path, required=True)
+    parser.add_argument("--strings", type=Path, help="the plugin's values[-xx]/strings.xml in the device language (default English)")
     parser.add_argument("--class", dest="classes", action="append", default=[], help="override the default bridging classes")
     parser.add_argument("--skip-tests", action="store_true", help="only the two release APK walks")
     args = parser.parse_args()
+    # A console that cannot show a character (a GBK one, say) gets a replacement instead of a traceback.
+    sys.stdout.reconfigure(errors="replace")
     adb = launch.Adb(args.serial)
     if "package:" not in adb.shell(f"pm path {HOST}", check=False):
         print(f"FAIL host: {HOST} is not installed")
@@ -111,7 +119,8 @@ def main() -> int:
             print(f"FAIL install: {install.strip()[-200:]}")
             return 1
         host_to_front(adb)
-        results.append(step("editor More entry (release)", [str(HERE / "verify_host_handoff.py"), *serial, "--apk", str(args.apk), "--host-strings", str(args.host_strings)], "HOST_HANDOFF_OK"))
+        plugin_strings = ["--strings", str(args.strings)] if args.strings else []
+        results.append(step("editor More entry (release)", [str(HERE / "verify_host_handoff.py"), *serial, "--apk", str(args.apk), "--host-strings", str(args.host_strings), *plugin_strings], "HOST_HANDOFF_OK"))
         host_to_front(adb)
         results.append(step("editor preview pane (release)", [str(HERE / "verify_editor_preview.py"), *serial, "--apk", str(args.apk), "--host-strings", str(args.host_strings)], "EDITOR_PREVIEW_OK"))
         if not args.skip_tests:

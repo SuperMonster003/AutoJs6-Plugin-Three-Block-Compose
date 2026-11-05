@@ -314,7 +314,7 @@
 ### P11.11 2.0.0 文档与发布 (文档 + 发布)
 
 - [x] (文档) 文档站 `api/ui.md` 与 `api/composeDesigner.md` "与 AutoJs6 的衔接" 写编辑器面板 (所需宿主提交 / 版本); README / changelog `v2.0.0` 10 语言; 宿主 changelog 条目 (10 语言, 只加自己的).
-- [ ] (发布) 2.0.0 本地 gate, 推送 / Release / 索引; 宿主发布配合时在真机矩阵 (Redmi / Pad / G8441 / 维护者指定) 补证据.
+- [x] (发布) 2.0.0 本地 gate, 推送 / Release / 索引; 宿主发布配合时在真机矩阵 (Redmi / Pad / G8441 / 维护者指定) 补证据.
 
   证据 (2026-11-05):
   - 文档: 文档站 `edce34a` (`api/composeDesigner.md` "与 AutoJs6 的衔接" 写编辑器布局预览面板 (工具栏 "预览" 开关只对 `"ui"` 脚本出现, 竖屏下半区 / 横屏右半区并按文件记住, 按窗口尺寸排版后缩小, 停止输入 400 ms 刷新, 点按控件跳到源码行, 不运行脚本, `{expr}` 只在安全范围求值, 失败时保留上一次成功的画面) 与 "更多" 菜单的 "在 3-Block Compose 设计器中打开" (插件 >= 1.2.0 时出现), 以前的 "宿主提交 xxx 之后" 全部改为 "AutoJs6 6.8.0 及以上", 页首版本范围改为 1.3.0 - 2.0.0; `api/ui.md` 新节 "在编辑器中预览布局" (同上要点, 链接设计器页的详细说明); 文档站 changelog 10 语言加一条), `f611dcd` (生成的 HTML / JSON / 搜索索引, `project.json` 修订 184); Offline Docs `ba3a23e` (同步 `edce34a` 生成的 8 个文件, build 259; 6.8.41 的 changelog 已由维护者在 `6c28067` 准备, 未动) 与 `ba29102` (README 指纹 246 个文件 / 18108641 B). 文档站与 Offline Docs 的推送按约定先问维护者 (见 "发布" 一行).
@@ -329,7 +329,7 @@
     - Redmi 22120RN86C (API 33, 宿主 5935 更新于 11-05 14:13, 开关为默认): 3/3; 衔接用例 10 通过 6 跳过 (该机 TypeScript Engine 为 0.6.8, 低于 0.7.0, TSX 5 项按假设跳过; 隐藏设计器用例因宿主支持生命周期 (v4 起改为暂停) 跳过), 编辑器预览面板 `pane=lower`.
     - Sony G8441 (API 28, 宿主 5935 更新于 11-05 12:41, 开关为默认): 3/3; 衔接用例 4 通过 12 跳过 (Android 13 以下没有交互预览, 交互类 9 项跳过; 未装 TypeScript Engine, TSX 3 项跳过). 首轮 "更多" 交接在等编辑器时超时: 另一会话在 12:41:08 重装了该机宿主, 恰在本轮运行中; 脚本改为先装 release 包后整轮重跑通过.
     - 公开宿主: 见上面的 AVD_API_33 只读实例 (6640) 一条.
-    - Xiaomi Pad 23046RP50C: adb 能列出设备但 `adb shell` 返回 `error: closed`, 维护者处理中, 待恢复后补.
+    - Xiaomi Pad 23046RP50C (API 35, zh-CN; 宿主为该机现有的 debug 6.8.0 6551, 可调试, 最近一次安装在 11-05 15:27 (adb 恢复前后), 开关为默认; TypeScript Engine 0.7.0; 插件原为 212): `adb shell` 一度返回 `error: closed`, 维护者处理后可用. 3/3; 衔接用例 14 通过 2 跳过 (隐藏设计器用例因宿主支持生命周期跳过; 无解析器的只读 TSX 用例因已装 TypeScript Engine 跳过), 编辑器预览面板 `pane=lower`. 首轮两个 release 包检查失败只因按英文标签查找 (该机界面为中文), 包装脚本增加 `--strings` 并把子进程输出固定为 UTF-8 后, 用两边的 `values-zh` 整轮重跑通过.
   - 发布: 插件 `eb8b76d` (tag `v2.0.0`, 应用源码与 `738897b` 相同, `VERSION_BUILD` 设回 224) 推送, master 与 tag 上的 Build integrity / Markdown integrity / Icon Studio recipe 均通过 (tag 上 API 35 作业一次通过); GitHub Release `v2.0.0` (APK `autojs6-plugin-three-block-compose-v2.0.0-a59c2916.apk` 6095670 B, SHA-256 `d23d8a5f...3ab4`, 与 `SHA256SUMS`, 说明为 changelog 的中英文摘要与要求); 官方索引 `8d19caa` 准入 3-Block Compose 2.0.0 (manifest 224; 重新生成后逐条目比对, 79 个条目中只有本插件的 releases 与说明链接变化; 81 项索引测试与 Markdown 检查通过, 推送后的 Plugin Index 工作流通过且无机器人提交). 生成器已内置空列表重试, 本次无需包装.
 
 ---
