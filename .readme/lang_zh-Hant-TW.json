@@ -8,7 +8,7 @@
   "p_introduction_what": "3-Block Compose 是 AutoJs6 的介面轉譯外掛程式. 指令碼透過宿主提供的 `compose` / `$compose` 入口宣告介面, 外掛程式在宿主處理程序內以 Jetpack Compose 與 Material 3 完成轉譯. 目前預覽同時支援 `\"ui\";` 模式的 Activity 內容與非 ui 指令碼的懸浮視窗.",
   "p_introduction_how": "外掛內建視覺化設計器與元件展示: 從啟動器開啟即進入設計器首頁, 可新增或匯入指令碼專案並在真實轉譯器上編輯介面, 元件展示則呈現全部元件的預覽與範例指令碼; 指令碼介面的轉譯仍在宿主處理程序中進行. 宿主透過 INFO 服務發現外掛並讀取版本與相容資訊, 再依契約 (`org.autojs.plugin.compose.api`) 在自身處理程序內實例化轉譯器工廠.",
   "h3_status": "目前狀態",
-  "p_status": "1.9.0 是目前的公開發行版 (GitHub Release, 已登記官方外掛索引). 需要 AutoJs6 6.8.0 (5322) 或更新版本中包含 3-Block Compose 新身分的建置 (宿主提交 f12665ffde 之後); 發佈時 AutoJs6 6.8.0 尚未正式發佈, 需要使用包含該提交的 AutoJs6 建置. AutoJs6 編輯器選單的 \"在 3-Block Compose 設計器中開啟\" 需要宿主提交 db7e6a1734 之後的建置, 設計器的 TSX 專案需要 TypeScript Engine 0.7.0, UI (XML) 專案的佈局預覽需要包含預覽服務的建置 (宿主提交 306a8f7834 之後). 本外掛提供 UI 頁面, 懸浮窗, 視覺化設計器 (Compose 與 UI 專案), 五個範例, API 參考, 設計器指南頁與 TypeScript 宣告. 已驗證的相容性及效能範圍記錄在路線圖中. 圖示已採用維護者提供的正式圖稿. 1.7.0 起 UI (XML) 專案的互動預覽由 AutoJs6 真實執行整份指令碼, 需要包含預覽契約 v2 的 AutoJs6 建置 (宿主提交 4c332c2053 之後) 與 Android 13 或更新版本. 1.8.0 起 UI 專案的佈局可以寫在 XML 檔案中並成為資料夾專案: 預覽使用專案檔案需要預覽契約 v3 (宿主提交 9df0a154b 之後), 在 AutoJs6 中執行或匯入資料夾專案需要宿主提交 faf412ef7 之後. 1.9.0 起互動預覽的對話框, 返回鍵, 暫停與恢復和主執行緒佔用上限需要預覽契約 v4 (宿主提交 2d7944d10 之後), TSX 的 UI 專案在互動預覽中執行需要預覽契約 v5 (宿主提交 204a33ee5 之後) 與 TypeScript Engine 0.7.0.",
+  "p_status": "2.0.0 是目前公開發行版 (GitHub Release, 已登記官方外掛索引), 與 AutoJs6 6.8.0 正式發布對齊: 外掛功能與 1.9.0 相同, 說明與文件改按 AutoJs6 版本號書寫. 需要 AutoJs6 6.8.0 或更新版本; 編輯器選單的 \"在 3-Block Compose 設計器中開啟\", UI (XML) 專案的佈局預覽與互動預覽, 資料夾專案的執行與匯入, 以及 AutoJs6 編輯器內的佈局預覽面板都包含在 AutoJs6 6.8.0 正式版中. 6.8.0 正式發布前的測試建置可能缺少其中一部分, 外掛按 AutoJs6 實際提供的能力降級. 設計器的 TSX 專案與 TSX 的 UI 專案需要 TypeScript Engine 0.7.0. 本外掛提供 UI 頁面, 懸浮視窗, 視覺化設計器 (Compose 與 UI 專案), 五個範例, API 參考, 設計器指南頁與 TypeScript 宣告. 已驗證的相容性及效能範圍記錄在路線圖中. 圖示已採用維護者提供的正式圖稿.",
   "h3_features": "功能特性",
   "p_features_intro": "目前開發預覽的核心能力",
   "features": [
@@ -35,11 +35,11 @@
   ],
   "h3_usage": "使用方式",
   "usage_steps": [
-    "安裝包含 compose 指令碼入口的相符本機 AutoJs6 建置 (最低 {{ required_host_version_name }} / {{ required_host_version_code }})",
+    "安裝 AutoJs6 6.8.0 或更新版本 (外掛要求的最低版本為 {{ required_host_version_name }} / {{ required_host_version_code }})",
     "安裝此外掛 APK; 從啟動器開啟 3-Block Compose 進入設計器首頁, 可新增指令碼專案, 或從頂部列開啟元件展示與設定",
     "在 AutoJs6 的外掛程式中心確認 3-Block Compose 已被識別並處於啟用狀態",
     "在指令碼中使用 `compose` 或 `$compose`; 透過 `compose.mount` 掛載 Activity 內容, 或先授予宿主懸浮視窗權限再使用 `compose.floaty`",
-    "編輯頁選單提供傳送執行, 在 AutoJs6 編輯器中開啟, 匯入 AutoJs6 指令碼目錄, 複製與匯出; 在 AutoJs6 編輯器選單 (需 AutoJs6 包含對應更新) 或檔案管理員中選擇 3-Block Compose 也可以直接編輯指令碼檔案"
+    "編輯頁選單提供傳送執行, 在 AutoJs6 編輯器中開啟, 匯入 AutoJs6 指令碼目錄, 複製與匯出; 在 AutoJs6 編輯器選單 (需 AutoJs6 6.8.0 或更新版本) 或檔案管理員中選擇 3-Block Compose 也可以直接編輯指令碼檔案"
   ],
   "h3_quick_start": "快速開始",
   "p_quick_start_intro": "以下計數器與懸浮視窗 HUD 均可在相符的本機預覽宿主中執行. 執行 HUD 前需授予宿主在其他應用程式上層顯示的權限:",
@@ -65,13 +65,14 @@
     "此版本使用 3-Block Compose 契約 V2, 需要配套 AutoJs6 6.8.0 / 5322; TSX 配套需要 TypeScript Engine 0.6.7. 新宿主仍可使用舊 V1 轉譯器的原有元件, 擴充元件需要 V2 轉譯器",
     "compose.memo 由 AutoJs6 6.8.0 / 5323 提供, 可在 render 中重用依賴未變化的片段; 此外掛無需更新, TSX 配套需要 TypeScript Engine 0.6.8",
     "契約類別 (org.autojs.plugin.compose.api) 自 1.2.0 起隨外掛打包供獨立處理程序使用; 在 AutoJs6 內仍由宿主提供同名類別, 外掛副本不生效",
-    "設計器在外掛自身處理程序執行, 不依賴 AutoJs6; 傳送執行, 在 AutoJs6 編輯器中開啟與匯入 AutoJs6 指令碼目錄需要已安裝 AutoJs6, 編輯器選單的 \"在 3-Block Compose 設計器中開啟\" 需要包含該入口的 AutoJs6 建置",
+    "設計器在外掛自身處理程序執行, 不依賴 AutoJs6; 傳送執行, 在 AutoJs6 編輯器中開啟與匯入 AutoJs6 指令碼目錄需要已安裝 AutoJs6, 編輯器選單的 \"在 3-Block Compose 設計器中開啟\" 需要 AutoJs6 6.8.0 或更新版本",
     "設計器的 TSX 專案需要 TypeScript Engine 0.7.0 或更新版本 (提供語法樹解析服務), 傳送執行時由 AutoJs6 經 TypeScript Engine 編譯; 未安裝或版本過舊時 TSX 專案以唯讀原始碼方式開啟, 可檢視與複製",
     "設計器在互動預覽中執行指令碼需要 Android 8.0 (API 26) 或更新版本 (沙盒中的 JavaScript Date 以 java.time 為基礎); 更舊版本的裝置上, JavaScript 專案按 TSX 專案的方式預覽",
-    "UI (XML) 專案的佈局預覽需要包含預覽服務的 AutoJs6 6.8.0 建置 (宿主提交 306a8f7834 之後; 外掛按服務是否存在判斷, 不按版本號), Android 11 (API 30) 起畫布嵌入 AutoJs6 繪製的真實檢視, 更舊版本顯示點陣圖快照; 沒有該服務時 UI 專案仍可編輯, 畫布說明原因",
-    "UI (XML) 專案的互動預覽需要包含預覽契約 v2 的 AutoJs6 6.8.0 建置 (宿主提交 4c332c2053 之後) 與 Android 13 (API 33) 或更新版本; Android 13 - 14 上畫布中的輸入框收不到鍵盤輸入, Android 15 起可以; 不符合條件時不顯示開關, 畫布上方說明原因, 可改用 \"在 AutoJs6 中執行\"; 只有契約 v1 的 AutoJs6 建置仍可提供佈局預覽",
-    "帶佈局檔案的 UI 專案 (1.8.0): 預覽使用專案檔案 (res 資源, 佈局檔案) 需要包含預覽契約 v3 的 AutoJs6 6.8.0 建置 (宿主提交 9df0a154b 之後), 在 AutoJs6 中執行或匯入資料夾專案需要宿主提交 faf412ef7 之後; 更早的建置仍按 XML 文字預覽, 兩個去向換成一行提示",
-    "互動預覽的新能力 (1.9.0): 畫布內的對話框, 返回鍵按鈕, 暫停與恢復, 狀態列顏色和主執行緒佔用上限需要包含預覽契約 v4 的 AutoJs6 6.8.0 建置 (宿主提交 2d7944d10 之後); TSX 的 UI 專案在互動預覽中執行需要預覽契約 v5 (宿主提交 204a33ee5 之後) 與 TypeScript Engine 0.7.0 或更新版本; 更早的建置維持 1.8.0 的行為 (隱藏設計器即停止指令碼, 回來時重新執行), TSX 的 UI 專案可改用 \"在 AutoJs6 中執行\""
+    "UI (XML) 專案的佈局預覽需要 AutoJs6 6.8.0 或更新版本 (外掛按預覽服務是否存在判斷, 不按版本號), Android 11 (API 30) 起畫布嵌入 AutoJs6 繪製的真實檢視, 更舊版本顯示點陣圖快照; 沒有該服務時 UI 專案仍可編輯, 畫布說明原因",
+    "UI (XML) 專案的互動預覽需要 AutoJs6 6.8.0 或更新版本與 Android 13 (API 33) 或更新版本; Android 13 - 14 上畫布中的輸入框收不到鍵盤輸入, Android 15 起可以; 不符合條件時不顯示開關, 畫布上方說明原因, 可改用 \"在 AutoJs6 中執行\"",
+    "帶佈局檔案的 UI 專案 (1.8.0): 預覽使用專案檔案 (res 資源, 佈局檔案) 與在 AutoJs6 中執行或匯入資料夾專案需要 AutoJs6 6.8.0 或更新版本; 更早的版本中這兩個去向換成一行提示",
+    "互動預覽的新能力 (1.9.0): 畫布內的對話框, 返回鍵按鈕, 暫停與恢復, 狀態列顏色和主執行緒佔用上限需要 AutoJs6 6.8.0 或更新版本; TSX 的 UI 專案在互動預覽中執行另需 TypeScript Engine 0.7.0 或更新版本, 未安裝時可改用 \"在 AutoJs6 中執行\"",
+    "AutoJs6 6.8.0 起編輯器內可以預覽 ui 模式指令碼的佈局 (工具列 \"預覽\" 開關, 點按元件跳到原始碼行), 由 AutoJs6 自己完成, 不需要本外掛; 已安裝本外掛 1.2.0 或更新版本時, 預覽面板與編輯器 \"更多\" 選單提供 \"在 3-Block Compose 設計器中開啟\""
   ],
   "h3_faq": "常見問題",
   "faq_items": [

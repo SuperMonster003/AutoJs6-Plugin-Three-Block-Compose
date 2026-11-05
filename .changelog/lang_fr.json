@@ -5,6 +5,16 @@
   "changelog_label_improvement": "Amelioration",
   "changelog_label_dependency": "Dependance",
   "$data": {
+    "v2.0.0": {
+      "released_date": "2026/11/05",
+      "hint": [
+        "Cette version s'aligne sur la sortie officielle d'AutoJs6 6.8.0 et fonctionne comme 1.9.0. Les fonctions qui nécessitaient jusqu'ici \"le commit hôte ... ou ultérieur\" (l'entrée de menu de l'éditeur \"Ouvrir dans le concepteur 3-Block Compose\", l'aperçu de mise en page et l'aperçu interactif des projets UI, les projets dossier avec fichiers de mise en page, les boîtes de dialogue, la touche Retour, la pause et la reprise dans l'aperçu interactif, et l'exécution des projets UI en TSX dans l'aperçu interactif) font toutes partie de la version officielle d'AutoJs6 6.8.0, et les notes indiquent désormais simplement \"nécessite AutoJs6 6.8.0 ou ultérieur\"",
+        "L'éditeur d'AutoJs6 6.8.0 propose un nouveau panneau d'aperçu de la mise en page (l'interrupteur d'aperçu de la barre d'outils; il dispose la page sans exécuter le script, et toucher un widget mène à sa ligne dans le code). Il nécessite AutoJs6 6.8.0 ou ultérieur et fonctionne sans ce plugin; lorsque ce plugin est installé, \"Ouvrir dans le concepteur 3-Block Compose\" dans le panneau transmet le script courant au concepteur"
+      ],
+      "improvement": [
+        "Le README, les notes de compatibilité et le guide du concepteur sur le site de documentation décrivent le panneau d'aperçu de l'éditeur et indiquent des versions d'AutoJs6 au lieu de commits hôte"
+      ]
+    },
     "v1.9.0": {
       "released_date": "2026/10/22",
       "hint": [

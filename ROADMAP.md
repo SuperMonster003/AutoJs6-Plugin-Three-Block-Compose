@@ -1569,3 +1569,9 @@ NavigationBar / NavigationRail / NavigationDrawer / TabRow / ModalBottomSheet / 
 - 本提交把 `VERSION_BUILD` 设回 219, 与 release 包一致 (官方索引从 tag 的 `version.properties` 读 versionCode; 其后两笔只改测试的提交曾升到 220 / 221, 未发布), 下一笔提交恢复为提交数 + 1.
 - 发布 (同日): tag `v1.9.0` = `6b17b21`; GitHub Release `v1.9.0` (APK 6093058 B, SHA-256 `cbdc53ad...23ea`); 官方索引 `b2a9bb2` 准入 (manifest 219; GitHub API 偶发返回空 releases 列表, 生成器经仓库外的重试包装运行). 插件 CI 在 master 上全部通过, tag 上 API 35 作业的 3 项已知超时重跑后通过. 逐项见 P11 路线图 P11.9 (已全部勾选).
 - 下一步: P11.11 (2.0.0 文档与发布, 编辑器预览面板; 宿主发布配合与真机矩阵), 开始前按路线图核对其前置.
+
+### 2026-11-05: P11.11 2.0.0 文档 (发布进行中)
+
+- 前置: 宿主 6.8.0 已于 2026-11-03 公开 (tag `v6.8.0`), 维护者决策 D77 (Q33) / D78 (Q34) 记入 P11 路线图决策表与附录 D.
+- 文档: 文档站 `edce34a` / `f611dcd` 与 Offline Docs `ba3a23e` / `ba29102` (本地, 推送前问维护者); 插件 README / changelog `v2.0.0` 10 语言, `VERSION_NAME` 2.0.0 (本提交); 宿主 changelog 的编辑器预览条目已随 6.8.0 发布, 未改宿主. P11 路线图 P11.11 (文档) 已勾选.
+- 下一步: 2.0.0 本地 gate (含 Redmi 复核线), 推送 / tag / Release / 官方索引, D78 的真机矩阵与只读 AVD_API_33 上的公开宿主复核, 然后勾选 P11.11 (发布).

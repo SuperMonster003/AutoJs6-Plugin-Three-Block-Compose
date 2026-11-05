@@ -4,6 +4,14 @@
 
 ******
 
+# v2.0.0
+
+###### 2026/11/05
+
+* `Hint` This release aligns with the official release of AutoJs6 6.8.0 and works the same as 1.9.0. Features that used to need "host commit ... or later" (the editor menu entry "Open in 3-Block Compose designer", the layout preview and interactive preview of UI projects, folder projects with layout files, dialogs, the back key and pause and resume in the interactive preview, and running TSX UI projects in the interactive preview) are all part of the official AutoJs6 6.8.0 release, and the notes now simply say "needs AutoJs6 6.8.0 or later"
+* `Hint` The AutoJs6 6.8.0 editor has a new layout preview panel (the "Preview" switch on the toolbar; it lays out the page without running the script, and tapping a widget jumps to its source line). It needs AutoJs6 6.8.0 or later and works without this plugin; with this plugin installed, "Open in 3-Block Compose designer" on the panel hands the current script to the designer
+* `Improvement` The README, the compatibility notes and the designer guide on the documentation site describe the editor layout preview panel and name AutoJs6 versions instead of host commits
+
 # v1.9.0
 
 ###### 2026/10/22

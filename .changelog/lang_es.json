@@ -5,6 +5,16 @@
   "changelog_label_improvement": "Mejora",
   "changelog_label_dependency": "Dependencia",
   "$data": {
+    "v2.0.0": {
+      "released_date": "2026/11/05",
+      "hint": [
+        "Esta versión se alinea con el lanzamiento oficial de AutoJs6 6.8.0 y funciona igual que 1.9.0. Las funciones que antes necesitaban \"el commit del host ... o posterior\" (la entrada de menú del editor \"Abrir en el diseñador de 3-Block Compose\", la vista previa de diseño y la vista previa interactiva de los proyectos UI, los proyectos de carpeta con archivos de diseño, los diálogos, la tecla Atrás y la pausa y reanudación en la vista previa interactiva, y la ejecución de proyectos UI en TSX en la vista previa interactiva) forman parte de la versión oficial de AutoJs6 6.8.0, y las notas indican ahora simplemente \"requiere AutoJs6 6.8.0 o posterior\"",
+        "El editor de AutoJs6 6.8.0 incorpora un panel de vista previa del diseño (el interruptor \"Vista previa\" de la barra de herramientas; coloca los elementos sin ejecutar el script, y tocar un control salta a su línea en el código). Requiere AutoJs6 6.8.0 o posterior y funciona sin este complemento; con este complemento instalado, \"Abrir en el diseñador de 3-Block Compose\" en el panel pasa el script actual al diseñador"
+      ],
+      "improvement": [
+        "El README, las notas de compatibilidad y la guía del diseñador en el sitio de documentación describen el panel de vista previa del editor e indican versiones de AutoJs6 en lugar de commits del host"
+      ]
+    },
     "v1.9.0": {
       "released_date": "2026/10/22",
       "hint": [
